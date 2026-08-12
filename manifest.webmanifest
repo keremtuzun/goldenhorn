@@ -14,8 +14,8 @@
     { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ],
   "shortcuts": [
-    { "name": "Match Scout", "url": "/#match", "description": "Start scouting a match" },
-    { "name": "Pick List", "url": "/#picklist", "description": "Open the pick list" },
-    { "name": "Pit Scout", "url": "/#pit", "description": "Log a pit report" }
+    { "name": "Match Scout", "url": "/match", "description": "Start scouting a match" },
+    { "name": "Pick List", "url": "/picklist", "description": "Open the pick list" },
+    { "name": "Pit Scout", "url": "/pit", "description": "Log a pit report" }
   ]
 }

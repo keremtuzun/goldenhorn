@@ -122,7 +122,20 @@
       <button class="btn full lg" type="submit">Create account <i data-ic="arrowRight"></i></button>
     </form>
 
-    <p style="font-size:var(--t-xs);color:var(--text-4);margin-top:var(--s6);text-align:center" id="acctCount"></p>
+    <div style="display:flex;align-items:center;gap:var(--s3);margin:var(--s6) 0 var(--s4)">
+      <span style="flex:1;height:1px;background:var(--line)"></span>
+      <span style="font-size:var(--t-2xs);color:var(--text-4);letter-spacing:.12em;text-transform:uppercase">or</span>
+      <span style="flex:1;height:1px;background:var(--line)"></span>
+    </div>
+    <button class="btn ghost full" id="guestBtn" type="button">
+      <i data-ic="eye"></i>Look around without an account
+    </button>
+    <p style="font-size:var(--t-xs);color:var(--text-4);margin-top:var(--s3);text-align:center;line-height:1.5">
+      Every page is open to guests. An account only exists so your matches get
+      credited to you on the scout leaderboard.
+    </p>
+
+    <p style="font-size:var(--t-xs);color:var(--text-4);margin-top:var(--s5);text-align:center" id="acctCount"></p>
   </div>
 </div>
 

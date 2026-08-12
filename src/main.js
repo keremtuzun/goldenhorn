@@ -42,6 +42,18 @@ let current = 'home';
 const pageRoot = id => $(`#page-${id}`);
 const rerender = id => () => PAGES[id].render(pageRoot(id));
 
+/* Routes are real paths, so /picklist can be bookmarked, shared with the drive
+   team, and opened cold. A rewrite sends every path to index.html; the hash
+   form is still read so older links keep working. */
+export function routeFromLocation() {
+  const fromPath = location.pathname.replace(/^\/+|\/+$/g, '');
+  const fromHash = location.hash.replace(/^#/, '');
+  const candidate = fromPath || fromHash;
+  return PAGES[candidate] ? candidate : 'home';
+}
+
+const pathFor = page => (page === 'home' ? '/' : `/${page}`);
+
 export function go(page, { push = true } = {}) {
   if (!PAGES[page]) page = 'home';
 
@@ -59,8 +71,17 @@ export function go(page, { push = true } = {}) {
   PAGES[page].render(pageRoot(page));
   moveSeam();
   window.scrollTo({ top: 0 });
-  if (push) history.replaceState({ page }, '', `#${page}`);
+
+  // pushState, not replaceState. With replaceState the back button walks out of
+  // the app entirely, which on a phone means leaving the site mid-match.
+  if (push && pathFor(page) !== location.pathname) {
+    history.pushState({ page }, '', pathFor(page));
+  }
 }
+
+window.addEventListener('popstate', () => {
+  if (appStarted) go(routeFromLocation(), { push: false });
+});
 
 /** Slides the gold hairline on the sidebar edge to sit against the active item. */
 function moveSeam() {
@@ -278,24 +299,35 @@ function bindAuth() {
   });
 }
 
+function enterAsGuest() {
+  enterApp({
+    name: 'Guest', email: '', role: 'Guest', group: 'browsing', guest: true,
+  }, { remember: false });
+  toast('Browsing as a guest. Anything you log stays on this device.', 'info', 5200);
+}
+
 function signOut() {
   endSession();
-  location.reload();
+  location.assign('/');
 }
 
 /* ─────────────────────────── app entry ─────────────────────────── */
 
 let appStarted = false;
 
-function enterApp(account) {
-  startSession(account);
+function enterApp(account, { remember = true } = {}) {
+  startSession(account, { remember });
   $('#login').style.display = 'none';
   $('#app').classList.add('show');
 
-  const initial = state.user.name[0].toUpperCase();
-  $('#userAv').textContent = initial;
+  const guest = Boolean(account.guest);
+  $('#userAv').textContent = state.user.name[0].toUpperCase();
+  $('#userAv').classList.toggle('me', !guest);
   $('#userName').textContent = state.user.name;
-  $('#userRole').textContent = `${state.user.role} · ${state.user.group}`;
+  $('#userRole').textContent = guest
+    ? 'Not credited on the board'
+    : `${state.user.role} · ${state.user.group}`;
+  $('#signOut').title = guest ? 'Create an account' : 'Sign out';
   $('#sideEvent').textContent = state.settings.event;
 
   if (appStarted) return;
@@ -305,8 +337,8 @@ function enterApp(account) {
   buildCommands();
   paintNetPill();
 
-  const hash = location.hash.replace('#', '');
-  go(PAGES[hash] ? hash : 'home', { push: false });
+  // Landing on /picklist should open the pick list, not bounce to the dashboard.
+  go(routeFromLocation(), { push: false });
 
   // First paint uses whatever is cached, then live data lands and repaints.
   loadLive().then(ok => {
@@ -345,6 +377,7 @@ function bindChrome() {
   $('#searchBtn').addEventListener('click', openPalette);
   $('#refreshBtn').addEventListener('click', refreshLive);
   $('#signOut').addEventListener('click', signOut);
+  $('#guestBtn').addEventListener('click', enterAsGuest);
 
   window.addEventListener('resize', debounce(() => { moveSeam(); moveAuthThumb(); }, 120));
 

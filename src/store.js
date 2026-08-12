@@ -109,9 +109,15 @@ export function signIn({ email, pass }) {
   return { account: a };
 }
 
-export function startSession(account) {
-  state.user = { name: account.name, email: account.email, role: account.role, group: account.group };
-  LS.set(K.session, account.email);
+export function startSession(account, { remember = true } = {}) {
+  state.user = {
+    name: account.name, email: account.email,
+    role: account.role, group: account.group,
+    guest: Boolean(account.guest),
+  };
+  // A guest session is deliberately not remembered: closing the tab should not
+  // leave someone permanently signed in as nobody.
+  if (remember && account.email) LS.set(K.session, account.email);
   emit('user');
 }
 

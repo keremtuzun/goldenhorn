@@ -4,7 +4,10 @@
    shell is precached so scouting works with no connection at all, and the data
    feeds fall back to whatever was last seen rather than to an error. */
 
-const VERSION = 'gh-v2-2026-08-12';
+/* Bump this on every deploy that changes the shell. The install event only runs
+   when these bytes change, so without a bump returning visitors keep the old
+   precache. */
+const VERSION = 'gh-v3-2026-08-12';
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = `runtime-${VERSION}`;
 
