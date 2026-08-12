@@ -230,16 +230,34 @@ export async function pullAll() {
  *  loudly at setup rather than silently at the event. */
 export async function dbHealthcheck() {
   if (!dbConfigured()) return { ok: false, reason: 'No project URL or key set.' };
+
+  /* Probe a real table, not the API root. The root returns 401 to an anonymous
+     key, which made a perfectly healthy project look unreachable. A table that
+     exists answers 200 with an empty array once row level security has filtered
+     it, and a table that does not exist answers 404, which is exactly how we
+     tell "schema not run" apart from "wrong URL". */
   try {
-    await call('/rest/v1/', { headers: { Accept: 'application/json' } });
+    const res = await fetch(`${base()}/rest/v1/profiles?select=id&limit=1`, {
+      headers: { apikey: anonKey(), Accept: 'application/json' },
+    });
+    if (res.status === 404) {
+      return { ok: false, reason: 'Project reachable, but the tables are missing. Run the schema SQL.' };
+    }
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, reason: 'The project rejected that key. Check the anon or publishable key.' };
+    }
+    if (!res.ok) return { ok: false, reason: `Project answered HTTP ${res.status}.` };
   } catch (e) {
     return { ok: false, reason: `Cannot reach the project: ${e.message}` };
   }
-  if (!signedIn()) return { ok: true, signedIn: false, reason: 'Reachable, not signed in.' };
+
+  if (!signedIn()) {
+    return { ok: true, signedIn: false, reason: 'Project reachable and the tables are there. Sign in to start syncing.' };
+  }
   try {
     await rest('/profiles?select=id&limit=1');
     return { ok: true, signedIn: true };
   } catch (e) {
-    return { ok: false, signedIn: true, reason: `Signed in but queries fail: ${e.message}. Did the schema run?` };
+    return { ok: false, signedIn: true, reason: `Signed in but queries fail: ${e.message}` };
   }
 }
