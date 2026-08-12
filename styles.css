@@ -996,12 +996,24 @@ td .empty{padding:var(--s7) var(--s4)}
 /* --------------------------------------------------------------------------
    24. Entrance choreography
    -------------------------------------------------------------------------- */
-.rise{opacity:0;transform:translateY(10px);
-  animation:rise var(--d4) var(--e-out) forwards;
-  animation-delay:calc(var(--i,0) * 45ms)}
-@keyframes rise{to{opacity:1;transform:none}}
-.page.active>*{animation:page-in var(--d3) var(--e-out)}
-@keyframes page-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* Content is visible by default and the entrance is opt-in.
+   This used to be the other way round: .rise declared opacity:0 and relied on
+   an animation to bring it back. A second rule, .page.active > *, matched the
+   same elements with higher specificity and later in the file, so its animation
+   shorthand replaced rise entirely, taking the forwards fill with it. Its own
+   keyframes had no fill, so every page flashed in and then dropped back to the
+   declared opacity:0. The whole app rendered invisible.
+
+   Written this way, any failure of the animation leaves the content on screen,
+   which is the only acceptable direction for that failure to go. */
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+@media (prefers-reduced-motion: no-preference){
+  .rise{
+    animation:rise var(--d4) var(--e-out) both;
+    animation-delay:calc(var(--i,0) * 45ms);
+  }
+}
 
 /* --------------------------------------------------------------------------
    25. Print. The pick list has to survive the alliance selection table.

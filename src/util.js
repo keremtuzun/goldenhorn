@@ -97,13 +97,25 @@ export function countUp(node, to, { decimals = 0, suffix = '', prefix = '', ms =
   node._cu = requestAnimationFrame(step);
 }
 
-/** Gives children an --i index so CSS can stagger their entrance. */
+/** Gives children an --i index so CSS can stagger their entrance, then strips
+ *  the class once the animation should have finished.
+ *
+ *  The strip is the important half. A fade-in has to start from opacity 0, so
+ *  for the length of the animation the content is hidden by CSS. If the
+ *  animation never runs (a stalled compositor, a browser or extension that
+ *  drops animations) the page would sit there invisible forever. setTimeout
+ *  does not depend on frames being painted, so this guarantees the end state
+ *  no matter what the animation does. */
 export function stagger(root, sel = ':scope > *', cap = 14) {
   if (!root) return;
-  $$(sel, root).forEach((n, i) => {
+  const nodes = $$(sel, root);
+  nodes.forEach((n, i) => {
     n.style.setProperty('--i', Math.min(i, cap));
     n.classList.add('rise');
   });
+  clearTimeout(root._riseTimer);
+  // Longest delay (cap * 45ms) plus the duration, plus headroom.
+  root._riseTimer = setTimeout(() => nodes.forEach(n => n.classList.remove('rise')), 1500);
 }
 
 /** Widths set in the same frame as insertion do not transition. Bumping them
