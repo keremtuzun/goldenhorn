@@ -3,6 +3,7 @@
    here and never from each other. */
 
 import { LS, uid, hash, bus } from './util.js';
+import * as DB from './db.js';
 
 const K = {
   accounts: 'gh_accounts',
@@ -32,6 +33,10 @@ const DEFAULT_SETTINGS = {
   ourTeam: 8159,
   units: 'metric',
   boardUrl: DEFAULT_BOARD_URL,
+  /* Supabase project. When both are set the app uses a real database with real
+     accounts; when they are blank it runs exactly as before on local storage. */
+  dbUrl: '',
+  dbKey: '',
   weights: { opr: 40, auto: 15, teleop: 15, defense: 10, consistency: 10, pit: 10 },
 };
 
@@ -88,9 +93,26 @@ export const getAccounts = () => LS.get(K.accounts, {});
 const saveAccounts = a => LS.set(K.accounts, a);
 export const pubId = email => hash(String(email || '').toLowerCase());
 
-export function signUp({ name, email, pass, role, group }) {
-  const accts = getAccounts();
+/* With a database configured these go to real auth, where the password is
+   hashed server side and never touches this device. Without one they fall back
+   to the original local accounts, which are a convenience for a shared tablet
+   and were never real security. */
+export async function signUp({ name, email, pass, role, group }) {
   const key = email.toLowerCase();
+
+  if (DB.dbConfigured()) {
+    try {
+      const res = await DB.dbSignUp({ email: key, password: pass, name, role, group });
+      if (res.needsConfirmation) {
+        return { needsConfirmation: true, message: 'Account created. Check your email to confirm it, then sign in.' };
+      }
+      return { account: { name, email: key, role, group, remote: true } };
+    } catch (e) {
+      return { error: e.message };
+    }
+  }
+
+  const accts = getAccounts();
   if (accts[key]) return { error: 'An account with that email already exists. Try signing in.' };
   accts[key] = {
     name, email: key, role, group,
@@ -101,9 +123,29 @@ export function signUp({ name, email, pass, role, group }) {
   return { account: accts[key] };
 }
 
-export function signIn({ email, pass }) {
+export async function signIn({ email, pass }) {
+  const key = email.toLowerCase();
+
+  if (DB.dbConfigured()) {
+    try {
+      await DB.dbSignIn({ email: key, password: pass });
+      const meta = DB.dbUser()?.meta || {};
+      return {
+        account: {
+          name: meta.name || key.split('@')[0],
+          email: key,
+          role: meta.role || 'Scout',
+          group: meta.team_group || 'MARMARA-A',
+          remote: true,
+        },
+      };
+    } catch (e) {
+      return { error: e.message };
+    }
+  }
+
   const accts = getAccounts();
-  const a = accts[email.toLowerCase()];
+  const a = accts[key];
   if (!a) return { error: 'No account found for that email. Create one first.' };
   if (a.pass !== hash(pass)) return { error: 'That password does not match. Try again.' };
   return { account: a };
@@ -121,9 +163,27 @@ export function startSession(account, { remember = true } = {}) {
   emit('user');
 }
 
-export function endSession() { LS.del(K.session); }
+export function endSession() {
+  LS.del(K.session);
+  if (DB.dbConfigured()) DB.dbSignOut().catch(() => {});
+}
 
 export function resumeSession() {
+  // A live database session outranks the local one: it is the account that can
+  // actually write to the team's data.
+  if (DB.dbConfigured() && DB.signedIn()) {
+    const u = DB.dbUser();
+    const meta = u?.meta || {};
+    const account = {
+      name: meta.name || u?.email?.split('@')[0] || 'Scout',
+      email: u?.email || '',
+      role: meta.role || 'Scout',
+      group: meta.team_group || 'MARMARA-A',
+      remote: true,
+    };
+    startSession(account);
+    return account;
+  }
   const email = LS.get(K.session);
   if (!email) return null;
   const a = getAccounts()[email];
@@ -139,7 +199,16 @@ export function credit(field, n = 1) {
   if (!a) return;
   a[field] = (a[field] || 0) + n;
   saveAccounts(accts);
-  enqueue('board', {});
+  // With a database the leaderboard is counted from the rows themselves, so
+  // there is no tally to push.
+  if (!DB.dbConfigured()) enqueue('board', {});
+}
+
+/** Persists the pick list and queues it for the team. */
+export function savePicks() {
+  persist('picks');
+  enqueue('picks', state.picks);
+  emit('picks');
 }
 
 /* ---------------- scouting records ---------------- */
@@ -203,9 +272,40 @@ export function enqueue(type, payload) {
 }
 
 let flushing = false;
+
+/** Sends everything waiting. With a database each item goes to its own table
+ *  and only the ones that succeed leave the queue, so a single bad row cannot
+ *  strand the rest of a shift's work. */
 export async function flushQueue() {
   if (flushing || !state.queue.length || !state.online) return;
-  // Already known to be gone: clear rather than fire another doomed request.
+
+  if (DB.dbConfigured()) {
+    if (!DB.signedIn()) return;          // nothing to authenticate with yet
+    flushing = true;
+    const survivors = [];
+    for (const item of state.queue) {
+      try {
+        if (item.type === 'match') await DB.pushMatch(item.payload);
+        else if (item.type === 'pit') await DB.pushPit(item.payload);
+        else if (item.type === 'picks') await DB.pushPicks(item.payload);
+        // 'board' items are from the old public-JSON path and have no meaning here.
+      } catch (e) {
+        item.tries++;
+        item.error = e.message;
+        // Give up on a row the server will never accept, rather than retrying
+        // it forever behind everything else.
+        if (item.tries < 6) survivors.push(item);
+      }
+    }
+    state.queue = survivors;
+    state.boardStatus = survivors.length ? 'error' : 'ok';
+    persist('queue');
+    emit('queue');
+    flushing = false;
+    return;
+  }
+
+  // Legacy public-JSON board.
   if (state.boardStatus === 'missing') {
     state.queue = [];
     persist('queue');
@@ -217,9 +317,6 @@ export async function flushQueue() {
     await syncBoard(true);
     state.queue = [];
   } catch {
-    // A board that 404s is not coming back. Holding a queue against it would
-    // just grow a counter nobody can ever clear, so drop it and let the UI say
-    // this device is running local only.
     if (state.boardStatus === 'missing') state.queue = [];
     else state.queue.forEach(q => q.tries++);
   } finally {
@@ -278,6 +375,40 @@ function mergeRecords(a = [], b = [], cap) {
 }
 
 export async function syncBoard(push = false) {
+  /* Database path. Pull the whole team's work for this event and merge it with
+     what is on the device, newest write per id wins. Local rows that have not
+     been pushed yet survive the merge, so pulling never eats unsynced work. */
+  if (DB.dbConfigured()) {
+    if (!state.online) { state.boardStatus = 'offline'; emit('board'); return state.board; }
+    if (!DB.signedIn()) { state.boardStatus = 'idle'; emit('board'); return state.board; }
+    try {
+      if (push) await flushQueue();
+      const remote = await DB.pullAll();
+
+      state.records = mergeRecords(state.records, remote.records, 2000);
+      // Keep the local copy of a pit report when it exists, because only the
+      // device that wrote it has the photo.
+      const localPhotos = new Map(state.pits.filter(p => p.photo).map(p => [String(p.team), p.photo]));
+      state.pits = mergeRecords(state.pits, remote.pits, 400)
+        .map(p => (localPhotos.has(String(p.team)) ? { ...p, photo: localPhotos.get(String(p.team)) } : p));
+      if (remote.picks && !state.picks.seeded) state.picks = remote.picks;
+
+      state.board = { scouts: remote.board, matches: state.records, pits: state.pits };
+      state.boardStatus = 'ok';
+      state.boardSynced = new Date();
+      persist('records', 'pits', 'picks', 'board');
+      emit('board');
+      emit('records');
+      return state.board;
+    } catch (e) {
+      state.boardStatus = 'error';
+      state.boardError = e.message;
+      emit('board');
+      if (push) throw e;
+      return state.board;
+    }
+  }
+
   const mine = publicDoc();
   const url = state.settings.boardUrl;
   let remote = null;

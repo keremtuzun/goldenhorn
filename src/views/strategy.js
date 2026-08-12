@@ -2,7 +2,7 @@
 
 import { $, $$, esc, num, clamp, mean, seeded, downloadFile, toCSV } from '../util.js';
 import { icon } from '../icons.js';
-import { state, persist, emit } from '../store.js';
+import { state, persist, emit, savePicks } from '../store.js';
 import { teamName, predictAlliance, winProbability, scoreTeams } from '../api.js';
 import { histogram } from '../charts.js';
 import { hydrate, toast, confirmAction } from '../ui.js';
@@ -301,8 +301,7 @@ function commitOrder(root) {
   state.picks.order.forEach(t => { if (!order.includes(t)) { order.push(t); tier[t] = state.picks.tier[t] || 'pool'; } });
   state.picks.order = order;
   state.picks.tier = tier;
-  persist('picks');
-  emit('picks');
+  savePicks();
   renumberLanes(root);
 }
 
@@ -321,8 +320,7 @@ export function addToPickList(team, lane = 'first') {
   team = Number(team);
   state.picks.order = [team, ...state.picks.order.filter(t => t !== team)];
   state.picks.tier[team] = lane;
-  persist('picks');
-  emit('picks');
+  savePicks();
 }
 
 export function bindPickList(root, rerender) {
@@ -350,7 +348,7 @@ export function bindPickList(root, rerender) {
       if (next != null) {
         if (next.trim()) state.picks.notes[noteFor] = next.trim();
         else delete state.picks.notes[noteFor];
-        persist('picks');
+        savePicks();
         rerender();
       }
       return;

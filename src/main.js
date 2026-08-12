@@ -264,18 +264,30 @@ function bindAuth() {
     selectedRole = card.dataset.role;
   });
 
-  $('#paneIn').addEventListener('submit', e => {
+  /* Both flows can hit the network now, so the button reports what it is
+     doing instead of appearing to ignore the click. */
+  const busy = (form, on, label) => {
+    const btn = $('button[type=submit]', form);
+    btn.disabled = on;
+    btn.dataset.idle = btn.dataset.idle || btn.innerHTML;
+    btn.innerHTML = on ? label : btn.dataset.idle;
+  };
+
+  $('#paneIn').addEventListener('submit', async e => {
     e.preventDefault();
     clearError('inErr');
-    const { account, error } = signIn({
+    const form = $('#paneIn');
+    busy(form, true, 'Signing in…');
+    const { account, error } = await signIn({
       email: $('#inEmail').value.trim(),
       pass: $('#inPass').value,
     });
+    busy(form, false);
     if (error) return showError('inErr', error);
     enterApp(account);
   });
 
-  $('#paneUp').addEventListener('submit', e => {
+  $('#paneUp').addEventListener('submit', async e => {
     e.preventDefault();
     clearError('upErr');
     $('#upOk').classList.add('hidden');
@@ -288,10 +300,20 @@ function bindAuth() {
     if (!/^\S+@\S+\.\S+$/.test(email)) return showError('upErr', 'That email does not look right.');
     if (pass.length < 6) return showError('upErr', 'Use at least six characters for the password.');
 
-    const { account, error } = signUp({ name, email, pass, role: selectedRole, group });
+    const form = $('#paneUp');
+    busy(form, true, 'Creating…');
+    const { account, error, needsConfirmation, message } = await signUp({
+      name, email, pass, role: selectedRole, group,
+    });
+    busy(form, false);
     if (error) return showError('upErr', error);
 
     const ok = $('#upOk');
+    if (needsConfirmation) {
+      $('p', ok).textContent = message;
+      ok.classList.remove('hidden');
+      return;
+    }
     $('p', ok).textContent = 'Account created. Signing you in.';
     ok.classList.remove('hidden');
     paintAccountCount();

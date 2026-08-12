@@ -1,8 +1,9 @@
 /* Scout Leaderboard, Data and Sync, Roadmap. */
 
-import { $, esc, num, fmtRel, downloadFile, toCSV } from '../util.js';
+import { $, esc, num, fmtRel, downloadFile, toCSV, copyText } from '../util.js';
 import { icon } from '../icons.js';
 import { state, persist, pubId, syncBoard, flushQueue, saveMatchRecord } from '../store.js';
+import { dbConfigured, signedIn, dbUser, dbHealthcheck } from '../db.js';
 import { unpackRecord } from '../qr.js';
 import { loadLive, loadSample, refreshDerived } from '../api.js';
 import { hydrate, toast, openModal, closeModal, confirmAction } from '../ui.js';
@@ -133,7 +134,48 @@ export function renderData(root) {
       </div>
 
       <div class="card c6">
-        <div class="card-head"><div class="h-sec">${icon('layers')}The team board</div>${boardTag()}</div>
+        <div class="card-head"><div><div class="h-sec">${icon('database')}Database</div>
+          <div class="card-note">Real accounts and a real table for every match, pit report and pick list.</div></div>
+          ${dbConfigured()
+            ? (signedIn() ? '<span class="tag pos"><span class="pulse"></span>connected</span>'
+                          : '<span class="tag warn">not signed in</span>')
+            : '<span class="tag">not set up</span>'}
+        </div>
+
+        ${!dbConfigured() ? `<div class="notice" style="margin-bottom:var(--s4)">${icon('info')}<div>
+          <b>Running on this device only</b>
+          <p>Accounts and scouting data live in this browser. Point the app at a free Supabase project
+          and everything moves to a real Postgres database with proper sign in, shared across every
+          tablet on the team. Three steps, once.</p></div>
+        </div>
+        <div class="steps" style="margin-bottom:var(--s4)">
+          <div class="step"><span class="s-n">1</span><div><b>Make a free project</b>
+            <p>supabase.com, new project. The free tier is far more than a scouting season needs.</p></div></div>
+          <div class="step"><span class="s-n">2</span><div><b>Run the schema</b>
+            <p>Copy the SQL below into the project's SQL editor and run it once. It creates the tables and locks down who can edit what.</p></div></div>
+          <div class="step"><span class="s-n">3</span><div><b>Paste the two values</b>
+            <p>Project Settings, then API. The URL and the anon public key. The anon key is meant to be public: the database policies are what protect the data.</p></div></div>
+        </div>` : ''}
+
+        <div class="field"><label for="cfgDbUrl">Project URL</label>
+          <input id="cfgDbUrl" value="${esc(state.settings.dbUrl || '')}" placeholder="https://xxxxxxxx.supabase.co" /></div>
+        <div class="field"><label for="cfgDbKey">Anon public key</label>
+          <input id="cfgDbKey" type="password" value="${esc(state.settings.dbKey || '')}" placeholder="eyJhbGciOi…" /></div>
+        <div class="row wrap" style="gap:var(--s2)">
+          <button class="btn" data-act="save-db">${icon('save')}Connect</button>
+          <button class="btn ghost" data-act="test-db">${icon('activity')}Test connection</button>
+          <button class="btn ghost" data-act="copy-sql">${icon('copy')}Copy the SQL</button>
+          <a class="btn ghost" href="/supabase/schema.sql" target="_blank" rel="noopener">${icon('external')}View schema</a>
+        </div>
+        ${dbConfigured() && signedIn() ? `<p class="card-note" style="margin-top:var(--s3)">
+          Signed in as <b>${esc(dbUser()?.email || '')}</b>. Passwords are hashed by the database and never stored here.</p>` : ''}
+        <div id="dbTestOut"></div>
+      </div>
+
+      <div class="card c6">
+        <div class="card-head"><div class="h-sec">${icon('layers')}${dbConfigured() ? 'Legacy shared board' : 'The team board'}</div>${boardTag()}</div>
+        ${dbConfigured() ? `<div class="notice" style="margin-bottom:var(--s4)">${icon('checkCircle')}<div>
+          <b>Superseded by the database</b><p>The old public JSON board is no longer used for syncing. Kept here only so nothing is lost if you switch back.</p></div></div>` : ''}
 
         ${state.boardStatus === 'missing' ? `<div class="notice warn" style="margin-bottom:var(--s4)">
           ${icon('alert')}<div><b>The shared board has expired</b>
@@ -228,6 +270,41 @@ export function bindData(root, rerender) {
     }
 
     if (act === 'sample') { loadSample(); rerender(); toast('Sample data loaded. Everything is badged.', 'warn'); return; }
+
+    if (act === 'save-db') {
+      state.settings.dbUrl = $('#cfgDbUrl', root).value.trim().replace(/\/+$/, '');
+      state.settings.dbKey = $('#cfgDbKey', root).value.trim();
+      persist('settings');
+      const health = await dbHealthcheck();
+      rerender();
+      toast(health.ok ? 'Database connected. Create an account or sign in to start syncing.'
+                      : `Saved, but: ${health.reason}`,
+            health.ok ? 'pos' : 'warn', 6000);
+      return;
+    }
+
+    if (act === 'test-db') {
+      const out = $('#dbTestOut', root);
+      out.innerHTML = `<div class="notice" style="margin-top:var(--s4)">${icon('clock')}<div><p>Testing…</p></div></div>`;
+      const health = await dbHealthcheck();
+      out.innerHTML = `<div class="notice ${health.ok ? 'pos' : 'neg'}" style="margin-top:var(--s4)">
+        ${icon(health.ok ? 'checkCircle' : 'xCircle')}<div>
+        <b>${health.ok ? (health.signedIn ? 'Connected and queries work' : 'Project reachable') : 'Not working'}</b>
+        <p>${esc(health.reason || 'Tables are readable and the policies are in place.')}</p></div></div>`;
+      return;
+    }
+
+    if (act === 'copy-sql') {
+      try {
+        const sql = await fetch('/supabase/schema.sql').then(r => r.text());
+        const ok = await copyText(sql);
+        toast(ok ? 'Schema copied. Paste it into the Supabase SQL editor and run it.'
+                 : 'Could not copy. Open the schema link instead.', ok ? 'pos' : 'warn', 5000);
+      } catch {
+        toast('Could not read the schema file.', 'neg');
+      }
+      return;
+    }
 
     if (act === 'save-board') {
       state.settings.boardUrl = $('#cfgBoard', root).value.trim();
