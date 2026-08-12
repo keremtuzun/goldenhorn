@@ -12,7 +12,7 @@
       before, on local storage alone, and says so. Nothing here is allowed to
       become a hard dependency. */
 
-import { state, persist } from './store.js';
+import { state } from './store.js';
 import { LS } from './util.js';
 
 const SESSION_KEY = 'gh_db_session';
