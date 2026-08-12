@@ -1,0 +1,21 @@
+{
+  "name": "Golden Horn 8159 Scouting",
+  "short_name": "GH Scouting",
+  "description": "FRC scouting for Team 8159 Golden Horn. Live OPR and EPA, pick list, alliance draft and offline match scouting.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#130709",
+  "theme_color": "#130709",
+  "categories": ["sports", "productivity", "utilities"],
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Match Scout", "url": "/#match", "description": "Start scouting a match" },
+    { "name": "Pick List", "url": "/#picklist", "description": "Open the pick list" },
+    { "name": "Pit Scout", "url": "/#pit", "description": "Log a pit report" }
+  ]
+}

@@ -2,1487 +2,252 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Golden Horn 8159 — Scouting Platform</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Golden Horn 8159 · Scouting Platform</title>
+<meta name="description" content="FRC scouting platform for Team 8159 Golden Horn. Live OPR and EPA from The Blue Alliance and Statbotics, pick list, alliance draft simulator, offline match scouting and the BPS solver." />
+<meta name="theme-color" content="#130709" />
 <link rel="icon" href="/logo.png" />
-<meta name="description" content="Golden Horn 8159 — FRC scouting platform. Live OPR/EPA from The Blue Alliance & Statbotics for Marmara Regional 2026." />
+<link rel="apple-touch-icon" href="/logo.png" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-<style>
-:root{
-  /* Golden Horn gold on deep wine */
-  --red:#e9c05c; --red2:#c79a34; --red-soft:rgba(233,192,92,.15);
-  --ink:#2a0c12;            /* dark wine text for on-gold surfaces */
-  --bg:#180a0e; --bg2:#110608;
-  --surface:#22111a; --surface2:#2e1722; --surface3:#40222f;
-  --border:rgba(255,224,214,.08); --border2:rgba(255,206,182,.16);
-  --text:#f7ece9; --muted:#a2908c; --muted2:#d0b9b3;
-  /* One dominant (gold), one neutral scale, and muted semantics used only where they carry state. */
-  --green:#7faf86; --amber:#c9a24a; --blue:#8aa0b8; --purple:#a598ac; --cyan:#8aa8a6;
-  --gold:#e9c05c;
-  /* alliance colours (FRC-standard, meaningful) */
-  --alli-red:#d98a86; --alli-blue:#8aa0c8;
-  --radius:12px; --radius-sm:8px; --radius-lg:20px;
-  --sans:'Hanken Grotesk',system-ui,sans-serif;
-  --disp:'Bricolage Grotesque','Hanken Grotesk',sans-serif;
-  --serif:'Instrument Serif',Georgia,serif;
-  --mono:'JetBrains Mono',ui-monospace,monospace;
-  /* depth from surface levels + hairlines, not glows */
-  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
-  --shadow-md:0 8px 24px rgba(0,0,0,.4);
-  --shadow-lg:0 24px 60px rgba(0,0,0,.55);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;-webkit-font-smoothing:antialiased;line-height:1.5;}
-body::-webkit-scrollbar,*::-webkit-scrollbar{width:9px;height:9px;}
-body::-webkit-scrollbar-thumb,*::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:6px;}
-::-webkit-scrollbar-track{background:transparent;}
-h1,h2,h3,h4{font-family:var(--disp);letter-spacing:-.02em;line-height:1.15;}
-a{color:inherit;text-decoration:none;}
-button{font-family:var(--sans);cursor:pointer;}
-.mono{font-family:var(--mono);}
-.hidden{display:none!important;}
-
-/* ─── shared primitives ─── */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:var(--red);color:var(--ink);border:none;border-radius:var(--radius-sm);padding:.72rem 1.15rem;font-size:.88rem;font-weight:700;transition:background .15s,border-color .15s;}
-.btn:hover{background:var(--red2);}
-.btn.green{color:#06210f;}
-.btn:active{transform:translateY(0);}
-.btn.ghost{background:rgba(255,255,255,.05);color:var(--text);box-shadow:inset 0 0 0 1px var(--border2);}
-.btn.ghost:hover{background:rgba(255,255,255,.09);}
-.btn.sm{padding:.5rem .85rem;font-size:.8rem;}
-.btn.full{width:100%;}
-.btn.green{background:var(--green);}
-.btn.green:hover{background:#6b9a72;}
-.btn.dark{background:#000;box-shadow:inset 0 0 0 1px var(--border2);}
-label{display:block;font-size:.66rem;color:var(--muted2);margin-bottom:.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
-input,textarea,select{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);padding:.65rem .85rem;font-size:.88rem;font-family:var(--sans);transition:.18s;}
-input:focus,textarea:focus,select:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px var(--red-soft);}
-input::placeholder,textarea::placeholder{color:var(--muted);}
-textarea{resize:vertical;min-height:80px;}
-select option{background:#1a1f2b;}
-.form-group{margin-bottom:1rem;}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;}
-.field-row.three{grid-template-columns:1fr 1fr 1fr;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.4rem;box-shadow:var(--shadow-sm);}
-.tag{display:inline-flex;align-items:center;gap:.35rem;font-size:.66rem;font-weight:700;padding:.18rem .5rem;border-radius:5px;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.05);color:var(--muted2);box-shadow:inset 0 0 0 1px var(--border);}
-.tag.red{background:var(--red-soft);color:var(--gold);box-shadow:inset 0 0 0 1px rgba(233,192,92,.28);}
-.tag.green{background:rgba(127,175,134,.14);color:#a7c9ab;box-shadow:inset 0 0 0 1px rgba(127,175,134,.28);}
-.tag.blue,.tag.amber,.tag.purple,.tag.muted{background:rgba(255,255,255,.05);color:var(--muted2);box-shadow:inset 0 0 0 1px var(--border);}
-.divider{height:1px;background:var(--border);margin:1.4rem 0;}
-
-/* logo */
-.logo{display:flex;align-items:center;gap:.7rem;}
-.logo-mark{width:40px;height:40px;flex:0 0 40px;border-radius:10px;box-shadow:inset 0 0 0 1px var(--border2);display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.logo-mark .ghlogo,.ghlogo{width:100%;height:100%;object-fit:cover;display:block;}
-.logo-mark svg{width:34px;height:34px;display:block;}
-.logo-mark svg path{stroke:var(--ink);stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round;}
-.logo-mark svg path.thin{stroke-width:1.6;}
-.logo-txt b{display:block;font-family:var(--disp);font-weight:700;font-size:1.02rem;letter-spacing:-.01em;line-height:1;}
-.logo-txt span{display:block;font-size:.6rem;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;margin-top:.25rem;}
-
-/* ════ LOGIN ════ */
-#login{min-height:100vh;display:flex;}
-.login-hero{flex:1;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:3rem 3.5rem;overflow:hidden;background:var(--bg2);border-right:1px solid var(--border);}
-.login-hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--red);}
-.hero-top,.hero-mid,.hero-bot{position:relative;z-index:1;}
-.hero-mid h1{font-size:3.6rem;font-weight:700;line-height:1.02;max-width:620px;letter-spacing:-.025em;}
-.hero-mid h1 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--red);letter-spacing:0;}
-.hero-mid p{color:var(--muted2);font-size:1.05rem;margin-top:1.3rem;max-width:480px;line-height:1.6;}
-.hero-stats{display:flex;gap:2.5rem;margin-top:2.5rem;}
-.hero-stats .hs b{font-family:var(--disp);font-size:1.9rem;display:block;color:#fff;}
-.hero-stats .hs span{font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;}
-.hero-bot{font-size:.74rem;color:var(--muted);letter-spacing:.05em;}
-.login-panel{width:480px;min-width:430px;background:var(--bg);display:flex;flex-direction:column;justify-content:center;padding:3rem 2.7rem;overflow-y:auto;}
-@media(max-width:900px){.login-hero{display:none;}.login-panel{width:100%;min-width:0;border:none;}}
-.auth-tabs{display:flex;gap:.3rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.25rem;margin:1.8rem 0 .4rem;}
-.auth-tab{flex:1;background:transparent;border:none;color:var(--muted);font-weight:700;font-size:.84rem;padding:.55rem;border-radius:7px;transition:.15s;}
-.auth-tab.active{background:var(--red);color:var(--ink);}
-.auth-pane{display:none;}
-.auth-pane.active{display:block;animation:fade .25s;}
-.lp-h{font-family:var(--disp);font-size:1.7rem;font-weight:700;margin:1.3rem 0 .3rem;letter-spacing:-.02em;}
-.lp-sub{color:var(--muted);font-size:.85rem;margin-bottom:1.5rem;}
-.err-box{background:rgba(226,80,80,.09);border:1px solid rgba(226,80,80,.28);color:#f3a8a8;border-radius:var(--radius-sm);padding:.65rem .9rem;font-size:.8rem;margin-bottom:1rem;display:none;line-height:1.45;}
-.err-box.show{display:block;}
-.ok-box{background:rgba(67,196,122,.1);border:1px solid rgba(67,196,122,.3);color:#86e0ab;border-radius:var(--radius-sm);padding:.65rem .9rem;font-size:.82rem;margin-bottom:1rem;display:none;font-weight:600;}
-.ok-box.show{display:block;}
-.role-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:1.5rem;}
-.role-card{background:rgba(255,255,255,.03);border:1.5px solid var(--border2);border-radius:var(--radius);padding:.95rem .6rem;text-align:center;transition:.18s;}
-.role-card:hover{border-color:var(--border2);}
-.role-card.sel{border-color:var(--red);background:var(--red-soft);}
-.role-card .ri{font-size:1.3rem;margin-bottom:.35rem;}
-.role-card b{font-size:.82rem;display:block;}
-.role-card span{font-size:.64rem;color:var(--muted);}
-
-/* ════ APP SHELL ════ */
-#app{display:none;min-height:100vh;}
-#app.show{display:grid;grid-template-columns:248px 1fr;}
-.sidebar{position:sticky;top:0;height:100vh;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.4rem 1rem;overflow-y:auto;}
-.side-logo{padding:.3rem .6rem 1.4rem;border-bottom:1px solid var(--border);margin-bottom:1rem;}
-.nav-group{margin-bottom:1.2rem;}
-.nav-group h5{font-size:.6rem;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;padding:0 .7rem;margin-bottom:.5rem;font-weight:700;}
-.nav-item{display:flex;align-items:center;gap:.7rem;padding:.6rem .7rem;border-radius:var(--radius-sm);font-size:.86rem;font-weight:600;color:var(--muted2);transition:.15s;margin-bottom:.15rem;}
-.nav-item:hover{background:rgba(255,255,255,.05);color:var(--text);}
-.nav-item.active{background:var(--surface2);color:#fff;box-shadow:inset 2px 0 0 var(--red);}
-.nav-item .ni-ic{width:18px;height:18px;flex:0 0 18px;opacity:.85;}
-.nav-item .ni-badge{margin-left:auto;font-size:.62rem;background:var(--red);color:var(--ink);border-radius:99px;padding:.05rem .4rem;font-weight:700;}
-.side-foot{margin-top:auto;padding-top:1rem;border-top:1px solid var(--border);}
-.side-user{display:flex;align-items:center;gap:.6rem;padding:.5rem .6rem;}
-.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(145deg,var(--red),var(--amber));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;color:var(--ink);flex:0 0 34px;}
-.side-user b{font-size:.8rem;display:block;}
-.side-user span{font-size:.66rem;color:var(--muted);}
-
-.main{min-width:0;padding:1.6rem 2.2rem 4rem;max-width:1280px;}
-@media(max-width:1100px){#app.show{grid-template-columns:1fr;}.sidebar{position:fixed;z-index:50;transform:translateX(-100%);transition:.25s;width:248px;}.sidebar.open{transform:none;}.main{padding:1.2rem;}.mobile-bar{display:flex!important;}}
-.mobile-bar{display:none;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:40;}
-.page{display:none;animation:fade .3s;}
-.page.active{display:block;}
-@keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
-.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
-.page-head h1{font-size:1.85rem;font-weight:700;}
-.page-head p{color:var(--muted);font-size:.9rem;margin-top:.3rem;max-width:640px;}
-.section-label{font-size:.68rem;color:var(--red);font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.5rem;}
-
-/* stat cards */
-.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;margin-bottom:1.5rem;}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.3rem;position:relative;overflow:hidden;}
-.stat .sv{font-family:var(--disp);font-size:2.2rem;font-weight:800;letter-spacing:-.03em;line-height:1;}
-.stat .sl{font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:.45rem;font-weight:600;}
-.stat .sd{font-size:.72rem;margin-top:.5rem;}
-
-/* tables */
-table{width:100%;border-collapse:collapse;font-size:.84rem;}
-thead th{text-align:left;font-size:.66rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:.7rem .8rem;border-bottom:1px solid var(--border2);cursor:pointer;user-select:none;white-space:nowrap;}
-thead th:hover{color:var(--text);}
-tbody td{padding:.72rem .8rem;border-bottom:1px solid var(--border);}
-tbody tr{transition:.12s;}
-tbody tr:hover{background:rgba(255,255,255,.025);}
-.rank{font-family:var(--disp);font-weight:700;color:var(--muted);width:34px;}
-.rank.r1{color:var(--gold);}.rank.r2{color:#cfd6e4;}.rank.r3{color:#d8965a;}
-.teamcell b{font-family:var(--disp);}
-.barmini{height:6px;border-radius:99px;background:var(--surface3);overflow:hidden;min-width:60px;}
-.barmini i{display:block;height:100%;background:var(--red);border-radius:99px;}
-
-/* match scout */
-.action-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;}
-@media(max-width:700px){.action-grid{grid-template-columns:repeat(2,1fr);}.field-row,.field-row.three{grid-template-columns:1fr;}}
-.act-btn{position:relative;border:1.5px solid var(--border2);background:var(--surface2);border-radius:var(--radius);padding:1.4rem .8rem;text-align:center;color:var(--text);font-family:var(--disp);font-weight:600;font-size:.95rem;transition:.12s;}
-.act-btn .adot{width:11px;height:11px;border-radius:50%;display:block;margin:0 auto .55rem;box-shadow:0 0 0 3px rgba(255,255,255,.06);}
-.act-btn .at{position:absolute;top:.5rem;right:.6rem;font-family:var(--mono);font-size:.66rem;color:var(--muted);}
-.act-btn.on{border-color:var(--red);background:var(--red-soft);box-shadow:inset 0 0 0 1px var(--red);}
-.act-btn.on .at{color:#ffd877;}
-.timer-box{display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;}
-.bigtimer{font-family:var(--mono);font-size:3.2rem;font-weight:700;letter-spacing:.02em;}
-.phase-pill{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .7rem;border-radius:99px;}
-.phase-pill.auto{background:rgba(168,85,247,.18);color:#ce9bff;}
-.phase-pill.teleop{background:rgba(59,130,246,.18);color:#8fb8ff;}
-.phase-pill.end{background:rgba(245,165,36,.18);color:#ffcd6b;}
-.eventlog{max-height:240px;overflow-y:auto;font-family:var(--mono);font-size:.76rem;}
-.eventlog .ev{display:flex;gap:.8rem;padding:.32rem .5rem;border-bottom:1px solid var(--border);}
-.eventlog .ev .t{color:var(--red);min-width:54px;}
-.eventlog .ev .d{min-width:60px;color:var(--muted);}
-.timeline{display:flex;height:30px;border-radius:8px;overflow:hidden;background:var(--surface3);margin-top:.6rem;}
-.timeline i{height:100%;}
-
-/* field maps */
-.fieldmap{position:relative;width:100%;max-width:520px;aspect-ratio:2/1;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);cursor:crosshair;overflow:hidden;user-select:none;}
-.fieldmap .midline{position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.18);transform:translateX(-1px);}
-.fieldmap .circ{position:absolute;left:50%;top:50%;width:78px;height:78px;border:2px dashed rgba(255,255,255,.18);border-radius:50%;transform:translate(-50%,-50%);}
-.dot{position:absolute;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.4);}
-.dot.shoot{background:var(--amber);}
-.dot.pass{background:var(--cyan);}
-.dot.auto{background:var(--green);font-size:.6rem;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;width:18px;height:18px;}
-.autopath{position:absolute;inset:0;pointer-events:none;}
-
-/* checklist / toggles */
-.chk-row{display:flex;align-items:center;justify-content:space-between;padding:.6rem .2rem;border-bottom:1px solid var(--border);}
-.chk-row span{font-size:.86rem;}
-.seg{display:inline-flex;background:var(--surface3);border-radius:99px;padding:.18rem;gap:.15rem;}
-.seg button{border:none;background:transparent;color:var(--muted2);font-size:.74rem;font-weight:700;padding:.32rem .7rem;border-radius:99px;transition:.12s;}
-.seg button.on{background:var(--red);color:#fff;}
-.seg.yn button.on.yes{background:var(--green);}
-.seg.yn button.on.no{background:var(--red);}
-.pillset{display:flex;flex-wrap:wrap;gap:.5rem;}
-.pillset button{border:1.5px solid var(--border2);background:var(--surface2);color:var(--muted2);border-radius:99px;padding:.45rem .9rem;font-size:.8rem;font-weight:600;transition:.12s;}
-.pillset button.on{border-color:var(--red);background:var(--red-soft);color:#fff;}
-
-/* bps / math */
-.formula{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:1.1rem 1.3rem;font-family:var(--mono);font-size:.95rem;text-align:center;color:#cfe0ff;overflow-x:auto;margin:.8rem 0;}
-.formula .v{color:var(--amber);}
-.passcard{display:flex;gap:.9rem;padding:.6rem 0;border-bottom:1px solid var(--border);}
-.passcard:last-child{border-bottom:none;}
-.passcard .num{font-family:var(--disp);font-size:.92rem;font-weight:700;color:var(--red);flex:0 0 auto;width:26px;height:26px;border-radius:7px;box-shadow:inset 0 0 0 1px var(--border2);display:flex;align-items:center;justify-content:center;}
-.passcard b{font-size:.92rem;}
-.passcard p{font-size:.8rem;color:var(--muted2);margin-top:.2rem;}
-
-/* CV terminal */
-.terminal{background:#06070a;border:1px solid var(--border2);border-radius:var(--radius);font-family:var(--mono);font-size:.78rem;padding:1rem 1.2rem;max-height:300px;overflow-y:auto;line-height:1.7;}
-.terminal .ln{white-space:pre-wrap;}
-.terminal .g{color:var(--green);}.terminal .y{color:var(--amber);}.terminal .b{color:var(--blue);}.terminal .m{color:var(--muted);}.terminal .r{color:var(--red);}
-.scrub{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.75rem;color:var(--muted);}
-.scrubbar{flex:1;height:8px;background:var(--surface3);border-radius:99px;overflow:hidden;}
-.scrubbar i{display:block;height:100%;width:0;background:var(--red);transition:width .1s;}
-
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.2rem;}
-@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr;}}
-.subhead{font-family:var(--disp);font-weight:600;font-size:1.05rem;margin:0 0 .9rem;display:flex;align-items:center;gap:.5rem;}
-.feature-li{display:flex;gap:.6rem;align-items:flex-start;font-size:.85rem;color:var(--muted2);margin-bottom:.55rem;}
-.feature-li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--red);margin-top:.5rem;flex:0 0 6px;}
-
-/* toast */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface3);border:1px solid var(--border2);color:#fff;padding:.7rem 1.2rem;border-radius:99px;font-size:.84rem;font-weight:600;box-shadow:var(--shadow-md);opacity:0;pointer-events:none;transition:.25s;z-index:200;}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-.bar-chart{display:flex;align-items:flex-end;gap:.5rem;height:170px;padding-top:.5rem;}
-.bar-chart .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:.4rem;justify-content:flex-end;height:100%;}
-.bar-chart .bar i{width:100%;max-width:34px;border-radius:4px 4px 0 0;background:var(--red);transition:.4s;}
-.bar-chart .bar small{font-size:.64rem;color:var(--muted);font-family:var(--mono);}
-.bar-chart .bar em{font-size:.66rem;font-style:normal;font-family:var(--disp);font-weight:600;}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:300;padding:1rem;}
-.modal-bg.show{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:1.6rem;width:440px;max-width:100%;box-shadow:var(--shadow-lg);}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-<!-- Link to Golden Horn 8159 team site -->
-<div style="position:fixed;top:12px;right:12px;z-index:150;display:flex;gap:8px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:.78rem;font-weight:600;">
-  <a href="https://www.teamgoldenhorn.com" target="_blank" rel="noopener" style="padding:6px 12px;border-radius:99px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.18);color:#fff;text-decoration:none;">teamgoldenhorn.com ↗</a>
-</div>
 
-<!-- ════════════ LOGIN ════════════ -->
+<noscript>
+  <div style="padding:2rem;max-width:40rem;margin:0 auto;font-family:system-ui">
+    <h1>Golden Horn 8159 Scouting</h1>
+    <p>This platform needs JavaScript. Every number on it is computed in your browser
+    from live FRC data feeds, so there is nothing meaningful to show without it.</p>
+  </div>
+</noscript>
+
+<!-- ══════════════════ SIGN IN ══════════════════ -->
 <div id="login">
   <div class="login-hero">
-    <div class="hero-top logo">
-      <div class="logo-mark">
-        <img class="ghlogo" src="/logo.png" alt="Golden Horn 8159 logo">
+
+    <!-- The Haliç, plotted by hand. The inlet the team is named after: the
+         Bosphorus mouth on the right, narrowing north-west to the head where
+         the Alibeyköy and Kağıthane creeks come in. It traces itself on load
+         and doubles as the app's loading mark. -->
+    <svg class="horn" viewBox="0 0 400 300" fill="none" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+      <path class="water" pathLength="100"
+        d="M372 232C330 224 296 214 268 196C236 176 214 152 186 132C156 110 124 96 92 84C70 76 52 70 34 64"/>
+      <path class="bank" pathLength="100"
+        d="M376 206C332 198 300 188 274 170C244 150 222 126 194 108C164 88 130 74 96 64C74 58 54 52 34 48"/>
+      <path class="bank" pathLength="100"
+        d="M368 258C326 250 292 240 262 222C230 202 206 178 178 156C148 134 118 118 88 106C66 98 48 90 34 82"/>
+      <path class="trace" pathLength="100"
+        d="M372 232C330 224 296 214 268 196C236 176 214 152 186 132C156 110 124 96 92 84C70 76 52 70 34 64"/>
+      <path class="bank" pathLength="100" d="M34 64C26 58 18 48 12 36"/>
+      <path class="bank" pathLength="100" d="M34 64C24 66 14 72 6 82"/>
+      <path class="bank" pathLength="100" d="M382 150C388 186 388 226 380 268"/>
+    </svg>
+
+    <div class="row" style="gap:var(--s3)">
+      <img src="/logo.png" alt="" width="40" height="40" style="border-radius:10px" />
+      <div>
+        <b style="font-family:var(--disp);font-size:var(--t-base);display:block;line-height:1.1">Golden&nbsp;Horn 8159</b>
+        <span style="font-size:var(--t-2xs);color:var(--text-4);letter-spacing:.18em;text-transform:uppercase">Scouting Platform</span>
       </div>
-      <div class="logo-txt"><b>Golden&nbsp;Horn 8159</b><span>Scouting Platform</span></div>
     </div>
-    <div class="hero-mid">
-      <h1>From vibes &amp; paper to <em>predictive data.</em></h1>
-      <div class="hero-stats">
-        <div class="hs"><b>3</b><span>Scout modes</span></div>
-        <div class="hs"><b>BPS</b><span>per-second solver</span></div>
-        <div class="hs"><b>3×</b><span>CV pipeline</span></div>
+
+    <div>
+      <h1 class="hero-h">From vibes and paper to <em>predictive data.</em></h1>
+      <p class="hero-p">Live OPR and EPA off the wire, a pick list your drive team can defend,
+        and a match scout that keeps working when the arena wifi does not.</p>
+      <div class="hero-facts">
+        <div><b>17</b><span>Working surfaces</span></div>
+        <div><b>150s</b><span>Tracked per match</span></div>
+        <div><b>0</b><span>Bars of signal needed</span></div>
       </div>
     </div>
-    <div class="hero-bot">FIRST&reg; Robotics Competition · Team 8159 Golden Horn · Ataşehir, İstanbul · 2026 Season</div>
+
+    <div class="hero-foot">
+      FIRST<sup>®</sup> Robotics Competition · Team 8159 Golden Horn · Ataşehir, İstanbul · 2026 season
+    </div>
   </div>
+
   <div class="login-panel">
-    <div class="logo">
-      <div class="logo-mark"><img class="ghlogo" src="/logo.png" alt="Golden Horn 8159 logo"></div>
-      <div class="logo-txt"><b>Golden Horn 8159</b><span>Scouting Platform</span></div>
-    </div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" data-tab="in" onclick="switchAuth('in')">Sign in</button>
-      <button class="auth-tab" data-tab="up" onclick="switchAuth('up')">Create account</button>
-    </div>
-
-    <!-- SIGN IN -->
-    <div class="auth-pane active" id="paneIn">
-      <div class="lp-h">Welcome back</div>
-      <div class="lp-sub">Sign in to your scouting account.</div>
-      <div class="err-box" id="inErr"></div>
-      <div class="form-group"><label>Email</label><input id="inEmail" type="email" placeholder="you@teamgoldenhorn.com" autocomplete="username" /></div>
-      <div class="form-group"><label>Password</label><input id="inPass" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
-      <button class="btn full" onclick="signIn()">Sign in →</button>
+    <div class="row" style="gap:var(--s3);margin-bottom:var(--s2)">
+      <img src="/logo.png" alt="" width="34" height="34" style="border-radius:8px" />
+      <div>
+        <b style="font-family:var(--disp);font-size:var(--t-sm);display:block;line-height:1.1">Golden Horn 8159</b>
+        <span style="font-size:var(--t-2xs);color:var(--text-4);letter-spacing:.16em;text-transform:uppercase">Scouting</span>
+      </div>
+      <a class="push iconbtn" href="https://www.teamgoldenhorn.com" target="_blank" rel="noopener"
+         title="teamgoldenhorn.com" aria-label="Team website"><i data-ic="external"></i></a>
     </div>
 
-    <!-- SIGN UP -->
-    <div class="auth-pane" id="paneUp">
-      <div class="lp-h">Join the scouting crew</div>
-      <div class="lp-sub">Create an account - it's saved on this device so you can sign back in.</div>
-      <div class="err-box" id="upErr"></div>
-      <div class="ok-box" id="upOk"></div>
+    <div class="auth-tabs" role="tablist">
+      <span class="thumb" id="authThumb"></span>
+      <button class="auth-tab active" data-tab="in" role="tab" aria-selected="true">Sign in</button>
+      <button class="auth-tab" data-tab="up" role="tab" aria-selected="false">Create account</button>
+    </div>
+
+    <form class="auth-pane active" id="paneIn" novalidate>
+      <div class="lp-h h-sec" style="font-size:var(--t-lg);margin-bottom:var(--s1)">Welcome back</div>
+      <p class="lede" style="margin:0 0 var(--s5)">Your account lives on this device. Pick up where you left off.</p>
+      <div class="notice neg hidden" id="inErr" style="margin-bottom:var(--s4)"><i data-ic="alert"></i><p></p></div>
+      <div class="field"><label for="inEmail">Email</label>
+        <input id="inEmail" type="email" placeholder="you@teamgoldenhorn.com" autocomplete="username" /></div>
+      <div class="field"><label for="inPass">Password</label>
+        <input id="inPass" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
+      <button class="btn full lg" type="submit">Sign in <i data-ic="arrowRight"></i></button>
+    </form>
+
+    <form class="auth-pane" id="paneUp" novalidate>
+      <div class="lp-h h-sec" style="font-size:var(--t-lg);margin-bottom:var(--s1)">Join the scouting crew</div>
+      <p class="lede" style="margin:0 0 var(--s5)">Saved on this device so you can sign back in. Your tallies sync to the shared board.</p>
+      <div class="notice neg hidden" id="upErr" style="margin-bottom:var(--s4)"><i data-ic="alert"></i><p></p></div>
+      <div class="notice pos hidden" id="upOk" style="margin-bottom:var(--s4)"><i data-ic="checkCircle"></i><p></p></div>
+
       <label>Your role</label>
-      <div class="role-grid" id="roleGrid">
-        <div class="role-card sel" data-role="Scout"><b>Scout</b><span>Collect data</span></div>
-        <div class="role-card" data-role="Lead"><b>Lead</b><span>Run groups</span></div>
-        <div class="role-card" data-role="Strategy"><b>Strategy</b><span>Analytics</span></div>
+      <div class="roles" id="roleGrid">
+        <button type="button" class="role sel" data-role="Scout"><i data-ic="clipboard"></i><b>Scout</b><span>Collect data</span></button>
+        <button type="button" class="role" data-role="Lead"><i data-ic="users"></i><b>Lead</b><span>Run groups</span></button>
+        <button type="button" class="role" data-role="Strategy"><i data-ic="target"></i><b>Strategy</b><span>Analytics</span></button>
       </div>
-      <div class="form-group"><label>Full name</label><input id="upName" placeholder="e.g. Elif Kaya" /></div>
-      <div class="form-group"><label>Email</label><input id="upEmail" type="email" placeholder="you@teamgoldenhorn.com" /></div>
-      <div class="field-row">
-        <div class="form-group"><label>Password</label><input id="upPass" type="password" placeholder="min 6 chars" /></div>
-        <div class="form-group"><label>Event group</label><input id="upGroup" placeholder="MARMARA-A" value="MARMARA-A" /></div>
-      </div>
-      <button class="btn full" onclick="signUp()">Create account →</button>
-    </div>
 
-    <p style="font-size:.72rem;color:var(--muted);margin-top:1.4rem;text-align:center;" id="acctCount"></p>
+      <div class="field"><label for="upName">Full name</label><input id="upName" placeholder="e.g. Elif Kaya" autocomplete="name" /></div>
+      <div class="field"><label for="upEmail">Email</label><input id="upEmail" type="email" placeholder="you@teamgoldenhorn.com" autocomplete="email" /></div>
+      <div class="fields">
+        <div class="field"><label for="upPass">Password</label><input id="upPass" type="password" placeholder="6 characters or more" autocomplete="new-password" /></div>
+        <div class="field"><label for="upGroup">Scouting group</label><input id="upGroup" value="MARMARA-A" /></div>
+      </div>
+      <button class="btn full lg" type="submit">Create account <i data-ic="arrowRight"></i></button>
+    </form>
+
+    <p style="font-size:var(--t-xs);color:var(--text-4);margin-top:var(--s6);text-align:center" id="acctCount"></p>
   </div>
 </div>
 
-<!-- ════════════ APP ════════════ -->
+<!-- ══════════════════ APP ══════════════════ -->
 <div id="app">
-  <!-- SIDEBAR -->
+  <div class="scrim" id="scrim"></div>
+
   <aside class="sidebar" id="sidebar">
-    <div class="side-logo logo">
-      <div class="logo-mark"><img class="ghlogo" src="/logo.png" alt="Golden Horn 8159 logo"></div>
-      <div class="logo-txt"><b>Golden Horn 8159</b><span>Scouting</span></div>
+    <div class="side-head">
+      <div class="row" style="gap:var(--s3)">
+        <img src="/logo.png" alt="" width="32" height="32" style="border-radius:7px" />
+        <div style="min-width:0">
+          <b style="font-family:var(--disp);font-size:var(--t-sm);display:block;line-height:1.1">Golden Horn 8159</b>
+          <span style="font-size:var(--t-2xs);color:var(--text-4);letter-spacing:.15em;text-transform:uppercase" id="sideEvent">Marmara Regional</span>
+        </div>
+      </div>
     </div>
-    <nav id="nav">
-      <div class="nav-group">
-        <h5>Overview</h5>
-        <a class="nav-item active" data-page="home">Dashboard</a>
-        <a class="nav-item" data-page="analytics">Team Analytics</a>
-        <a class="nav-item" data-page="match-strategy">Match Strategy</a>
-      </div>
-      <div class="nav-group">
-        <h5>Collect</h5>
-        <a class="nav-item" data-page="prescout">Pre-Scout</a>
-        <a class="nav-item" data-page="pit">Pit Scout</a>
-        <a class="nav-item" data-page="match">Match Scout</a>
-      </div>
-      <div class="nav-group">
-        <h5>Pipeline</h5>
-        <a class="nav-item" data-page="cv">CV Scoreboard</a>
-        <a class="nav-item" data-page="bps">The BPS Model</a>
-      </div>
-      <div class="nav-group">
-        <h5>Team</h5>
-        <a class="nav-item" data-page="leaderboard">Scout Leaderboard</a>
-        <a class="nav-item" data-page="future">Roadmap</a>
-      </div>
-    </nav>
+
+    <div class="side-scroll">
+      <span class="side-seam" id="sideSeam"></span>
+      <nav id="nav" aria-label="Sections">
+        <div class="nav-group">
+          <h5>Overview</h5>
+          <a class="nav-item active" data-page="home"      tabindex="0" role="link"><i data-ic="dashboard"></i>Dashboard</a>
+          <a class="nav-item"        data-page="analytics" tabindex="0" role="link"><i data-ic="chart"></i>Team Analytics</a>
+          <a class="nav-item"        data-page="compare"   tabindex="0" role="link"><i data-ic="compare"></i>Compare Robots</a>
+        </div>
+        <div class="nav-group">
+          <h5>Strategy</h5>
+          <a class="nav-item" data-page="predictor"  tabindex="0" role="link"><i data-ic="target"></i>Match Predictor</a>
+          <a class="nav-item" data-page="picklist"   tabindex="0" role="link"><i data-ic="picklist"></i>Pick List</a>
+          <a class="nav-item" data-page="draft"      tabindex="0" role="link"><i data-ic="users"></i>Alliance Draft</a>
+          <a class="nav-item" data-page="projection" tabindex="0" role="link"><i data-ic="dice"></i>Rank Projection</a>
+        </div>
+        <div class="nav-group">
+          <h5>Event</h5>
+          <a class="nav-item" data-page="schedule"    tabindex="0" role="link"><i data-ic="calendar"></i>Match Schedule</a>
+          <a class="nav-item" data-page="assignments" tabindex="0" role="link"><i data-ic="table"></i>Scout Assignments</a>
+        </div>
+        <div class="nav-group">
+          <h5>Collect</h5>
+          <a class="nav-item" data-page="prescout" tabindex="0" role="link"><i data-ic="layers"></i>Pre-Scout</a>
+          <a class="nav-item" data-page="pit"      tabindex="0" role="link"><i data-ic="robot"></i>Pit Scout</a>
+          <a class="nav-item" data-page="match"    tabindex="0" role="link"><i data-ic="stopwatch"></i>Match Scout</a>
+        </div>
+        <div class="nav-group">
+          <h5>Pipeline</h5>
+          <a class="nav-item" data-page="cv"  tabindex="0" role="link"><i data-ic="camera"></i>CV Scoreboard</a>
+          <a class="nav-item" data-page="bps" tabindex="0" role="link"><i data-ic="sigma"></i>The BPS Model</a>
+        </div>
+        <div class="nav-group">
+          <h5>Team</h5>
+          <a class="nav-item" data-page="leaderboard" tabindex="0" role="link"><i data-ic="trophy"></i>Scout Leaderboard</a>
+          <a class="nav-item" data-page="data"        tabindex="0" role="link"><i data-ic="database"></i>Data &amp; Sync</a>
+          <a class="nav-item" data-page="roadmap"     tabindex="0" role="link"><i data-ic="map"></i>Roadmap</a>
+        </div>
+      </nav>
+    </div>
+
     <div class="side-foot">
       <div class="side-user">
-        <div class="avatar" id="userAv">E</div>
-        <div><b id="userName">Elif K.</b><span id="userRole">Scout · CMP-JOHNSON-A</span></div>
+        <div class="avatar me" id="userAv">G</div>
+        <div style="min-width:0">
+          <b id="userName">Scout</b>
+          <span id="userRole">Scout</span>
+        </div>
+        <button class="iconbtn push" id="signOut" title="Sign out" aria-label="Sign out"><i data-ic="logout"></i></button>
       </div>
-      <button class="btn ghost sm full" style="margin-top:.5rem;" onclick="logout()">Sign out</button>
     </div>
   </aside>
 
-  <div>
-    <div class="mobile-bar">
-      <button class="btn ghost sm" onclick="document.getElementById('sidebar').classList.toggle('open')">Menu</button>
-      <div class="logo"><div class="logo-mark" style="width:30px;height:30px;flex-basis:30px;border-radius:8px;"><img class="ghlogo" src="/logo.png" alt="Golden Horn 8159 logo"></div><b style="font-family:var(--disp);">Golden Horn 8159</b></div>
-    </div>
-    <main class="main">
+  <div style="min-width:0">
+    <header class="topbar">
+      <button class="iconbtn mobile-bar" id="menuBtn" aria-label="Open navigation"><i data-ic="menu"></i></button>
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <span class="c-root">Golden Horn</span>
+        <span class="c-sep"><i data-ic="right" style="width:12px;height:12px"></i></span>
+        <span class="c-now" id="crumbNow">Dashboard</span>
+      </nav>
 
-      <!-- ░░ HOME ░░ -->
-      <section class="page active" id="page-home">
-        <div class="page-head">
-          <div>
-            <div class="section-label">Marmara Regional · İstanbul · 2026</div>
-            <h1>Welcome back, <span id="hiName">Elif</span> </h1>
-            <p>Team 8159 Golden Horn · Jr. Robotics Science School, Ataşehir · rookie 2020 · advanced to the Galileo Division at the 2026 Houston World Championship. Live OPR/EPA below is pulled from real FRC data feeds.</p>
-          </div>
-          <button class="btn" onclick="go('match')">Start scouting a match</button>
-        </div>
-        <div class="stat-grid">
-          <div class="stat"><div class="sv" id="stTeams">42</div><div class="sl">Teams tracked</div><div class="sd"><span class="tag green">100% pre-scouted</span></div></div>
-          <div class="stat"><div class="sv" id="stMatches">312</div><div class="sl">Matches logged</div><div class="sd"><span class="tag blue">+18 today</span></div></div>
-          <div class="stat"><div class="sv" id="stPit">38</div><div class="sl">Pit reports</div><div class="sd"><span class="tag amber">4 pending</span></div></div>
-          <div class="stat"><div class="sv">3×</div><div class="sl">CV processing speed</div><div class="sd"><span class="tag red">live pipeline</span></div></div>
-        </div>
-        <div class="grid2">
-          <div class="card">
-            <div class="subhead">Top robots by OPR <span style="color:var(--muted);font-weight:400;font-size:.78rem;">· live from TBA</span></div>
-            <table><thead><tr><th></th><th>Team</th><th>OPR</th><th></th></tr></thead><tbody id="homeTop"></tbody></table>
-          </div>
-          <div class="card">
-            <div class="subhead">The 3-mode workflow</div>
-            <div class="feature-li"><b>Pre-Scout</b> - every match of every team in our division, scouted at the alliance level before quals start.</div>
-            <div class="feature-li"><b>Pit Scout</b> - near-total awareness of every robot: specs, drivetrain, vision, scoring, ops & autos.</div>
-            <div class="feature-li"><b>Match Scout</b> - 7 time-tracked action segments, fused with a Computer-Vision scoreboard tracker.</div>
-            <div class="divider"></div>
-            <div class="subhead" style="font-size:.92rem;">Why it matters</div>
-            <p style="font-size:.84rem;color:var(--muted2);">Top-level FRC is won on data-driven decisions. We don't ask scouts to count every game piece - the CV pipeline does the counting, the scouts flag <em>who</em> and <em>when</em>, and a weighted ridge + NNLS solver turns it into honest per-team BPS.</p>
-          </div>
-        </div>
-      </section>
+      <div class="push"></div>
 
-      <!-- ░░ ANALYTICS ░░ -->
-      <section class="page" id="page-analytics">
-        <div class="page-head">
-          <div><div class="section-label">Data Leaderboard · live feed</div><h1>Team Analytics</h1>
-          <p>Real Marmara Regional teams with live OPR/EPA pulled from The Blue Alliance &amp; Statbotics, alongside our bespoke BPS. Advanced metrics the per-match models simply can't see.</p></div>
-          <button class="btn" onclick="loadLive()">↻ Refresh live data</button>
-        </div>
-        <div id="liveBanner" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.82rem;color:var(--muted2);margin-bottom:1.2rem;"></div>
-        <div class="stat-grid">
-          <div class="stat"><div class="sv" id="anTop">-</div><div class="sl">OPR leader</div><div class="sd"><span class="tag amber">live · TBA</span></div></div>
-          <div class="stat"><div class="sv" id="anAvg">-</div><div class="sl">Field avg OPR</div></div>
-          <div class="stat"><div class="sv" id="anDef">-</div><div class="sl">Best defender</div><div class="sd"><span class="tag purple">lowest DPR</span></div></div>
-          <div class="stat"><div class="sv" id="anEff">-</div><div class="sl">Best win rate</div></div>
-        </div>
-        <div class="card" style="margin-bottom:1.2rem;">
-          <div class="subhead">OPR - top 10 <span style="color:var(--muted);font-weight:400;font-size:.78rem;">· live from The Blue Alliance</span></div>
-          <div class="bar-chart" id="anChart"></div>
-        </div>
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;">
-            <div class="subhead" style="margin:0;">Full team table <span style="color:var(--muted);font-weight:400;font-size:.8rem;">(click a header to sort · click a row for detail)</span></div>
-          </div>
-          <div style="overflow-x:auto;">
-          <table id="anTable">
-            <thead><tr>
-              <th data-sort="rank">#</th><th data-sort="team">Team</th>
-              <th data-sort="opr">OPR ▾</th><th data-sort="bps">BPS est</th><th data-sort="epa">EPA</th>
-              <th data-sort="ccwm">CCWM</th><th data-sort="eff">Win%</th><th data-sort="defImpact">DPR</th><th data-sort="wins">Record</th>
-            </tr></thead>
-            <tbody id="anBody"></tbody>
-          </table>
-          </div>
-        </div>
-      </section>
+      <button class="searchbtn" id="searchBtn">
+        <i data-ic="search"></i><span>Search teams, jump anywhere</span>
+        <span class="kbd">Ctrl K</span>
+      </button>
+      <div id="netPill"></div>
+      <button class="iconbtn hidden" id="installBtn" title="Install this app" aria-label="Install this app"><i data-ic="download"></i></button>
+      <button class="iconbtn" id="refreshBtn" title="Refresh live data" aria-label="Refresh live data"><i data-ic="refresh"></i></button>
+    </header>
 
-      <!-- ░░ MATCH STRATEGY ░░ -->
-      <section class="page" id="page-match-strategy">
-        <div class="page-head"><div><div class="section-label">Alliance Predictor</div><h1>Match Strategy</h1>
-        <p>Because our model operates at the alliance level, we can predict any 3-v-3 outcome from per-team BPS and stack qualitative pit notes on top.</p></div></div>
-        <div class="card" style="margin-bottom:1.2rem;">
-          <div class="grid2">
-            <div>
-              <div class="subhead" style="color:#ffd877;">Red Alliance</div>
-              <div class="form-group"><select class="predSel" data-side="red"></select></div>
-              <div class="form-group"><select class="predSel" data-side="red"></select></div>
-              <div class="form-group"><select class="predSel" data-side="red"></select></div>
-            </div>
-            <div>
-              <div class="subhead" style="color:#8fb8ff;">Blue Alliance</div>
-              <div class="form-group"><select class="predSel" data-side="blue"></select></div>
-              <div class="form-group"><select class="predSel" data-side="blue"></select></div>
-              <div class="form-group"><select class="predSel" data-side="blue"></select></div>
-            </div>
-          </div>
-          <button class="btn full" style="margin-top:.4rem;" onclick="predict()">Predict outcome →</button>
-        </div>
-        <div id="predResult"></div>
-      </section>
-
-      <!-- ░░ PRE-SCOUT ░░ -->
-      <section class="page" id="page-prescout">
-        <div class="page-head"><div><div class="section-label">Head start</div><h1>Pre-Scout Operation</h1>
-        <p>Before the Championship we scouted every single match from previous events of every team in our division - at the alliance level - so we walked in with complete statistical insight before a single qual was played.</p></div></div>
-        <div class="grid3" style="margin-bottom:1.2rem;">
-          <div class="card"><div class="subhead">1 · Pull match list</div><p style="font-size:.84rem;color:var(--muted2);">Auto-import every prior event &amp; match for every team in the division from TBA/match video archives.</p></div>
-          <div class="card"><div class="subhead">2 · Alliance-level capture</div><p style="font-size:.84rem;color:var(--muted2);">Scouts log not just their team but every alliance partner - the model needs complete alliance rows.</p></div>
-          <div class="card"><div class="subhead">3 · Accelerated pipeline</div><p style="font-size:.84rem;color:var(--muted2);">Multiple devices + the 3× CV scoreboard tracker make a full-division sweep feasible for a small team.</p></div>
-        </div>
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:.6rem;">
-            <div class="subhead" style="margin:0;">Division pre-scout coverage</div>
-            <button class="btn sm" onclick="runPrescout()">Sweep next batch</button>
-          </div>
-          <div class="scrub"><span id="psPct">0%</span><div class="scrubbar"><i id="psBar"></i></div><span id="psCount">0 / 312 matches</span></div>
-          <div style="overflow-x:auto;margin-top:1rem;">
-          <table><thead><tr><th>Team</th><th>Prior events</th><th>Matches captured</th><th>Alliance rows</th><th>Status</th></tr></thead><tbody id="psBody"></tbody></table>
-          </div>
-        </div>
-      </section>
-
-      <!-- ░░ PIT SCOUT ░░ -->
-      <section class="page" id="page-pit">
-        <div class="page-head"><div><div class="section-label">Total robot awareness</div><h1>Pit Scout</h1>
-        <p>Built by polling every subteam on what they wanted to know. The result: we can know almost everything about a robot.</p></div>
-        <button class="btn green" onclick="savePit()">Save pit report</button></div>
-
-        <div class="grid2">
-          <div>
-            <!-- 1 physical -->
-            <div class="card" style="margin-bottom:1.2rem;">
-              <div class="subhead">1 · Physical Specs</div>
-              <div class="field-row"><div class="form-group"><label>Team number</label><input id="pitTeam" placeholder="e.g. 8159" /></div>
-              <div class="form-group"><label>Robot photo</label><button class="btn ghost sm full" onclick="toast('Camera - clear shot of all major mechanisms')">Capture photo</button></div></div>
-              <div class="field-row three">
-                <div class="form-group"><label>Width</label><input class="dim" id="pitW" type="number" placeholder="-" /></div>
-                <div class="form-group"><label>Length</label><input class="dim" id="pitL" type="number" placeholder="-" /></div>
-                <div class="form-group"><label>Height</label><input class="dim" id="pitH" type="number" placeholder="-" /></div>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <label style="margin:0;">Smart dimensioning</label>
-                <div class="seg" id="unitSeg"><button class="on" data-unit="metric">Metric (cm)</button><button data-unit="imperial">Imperial (in)</button></div>
-              </div>
-            </div>
-
-            <!-- 2 drivetrain -->
-            <div class="card" style="margin-bottom:1.2rem;">
-              <div class="subhead">2 · Drivetrain &amp; Motors</div>
-              <label>Drivetrain type</label>
-              <div class="pillset" id="dtSet">
-                <button data-dt="Tank">Tank</button><button class="on" data-dt="Swerve">Swerve</button>
-                <button data-dt="Mecanum">Mecanum</button><button data-dt="H-Drive">H-Drive</button><button data-dt="Other">Other</button>
-              </div>
-              <div class="form-group" id="swerveWrap" style="margin-top:.8rem;"><label>Swerve module type</label>
-                <select id="pitModule"><option>MK4i</option><option>MK4n</option><option>SDS MK4</option><option>WCP Swerve X2</option><option>Thrifty</option><option>Custom</option></select></div>
-              <div class="field-row" style="margin-top:.6rem;">
-                <div class="form-group"><label>Drive motors</label><input id="pitDriveMotors" placeholder="e.g. 4× Kraken X60" /></div>
-                <div class="form-group"><label>Other motors</label><input id="pitOtherMotors" placeholder="e.g. 2× NEO, 1× 775" /></div>
-              </div>
-              <label>Wheel type</label>
-              <div class="pillset" id="wheelSet">
-                <button class="on" data-wheel="Colson">Colson</button><button data-wheel="Pneumatic">Pneumatic</button>
-                <button data-wheel="Omni">Omni</button><button data-wheel="Traction">Traction</button><button data-wheel="Other">Other</button>
-              </div>
-            </div>
-
-            <!-- 3 vision -->
-            <div class="card" style="margin-bottom:1.2rem;">
-              <div class="subhead">3 · Vision Processing</div>
-              <div class="chk-row"><span>Has vision processing?</span>
-                <div class="seg yn" data-yn="vision"><button class="yes on" data-v="1">Yes</button><button class="no" data-v="0">No</button></div></div>
-              <label style="margin-top:.7rem;">Used for</label>
-              <div class="pillset" id="visionAreas">
-                <button class="on" data-va="Autonomous">Autonomous</button><button class="on" data-va="Game Piece Collection">Collection</button>
-                <button data-va="Game Piece Shooting">Shooting</button><button class="on" data-va="Localization">Localization</button>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <!-- 4 scoring -->
-            <div class="card" style="margin-bottom:1.2rem;">
-              <div class="subhead">4 · Scoring, Intake &amp; Passing</div>
-              <label>Intake type</label>
-              <div class="pillset" id="intakeSet"><button class="on" data-in="Over Bumper">Over Bumper</button><button data-in="Cut Bumper">Cut Bumper</button><button data-in="Other">Other</button></div>
-              <div class="field-row" style="margin-top:.8rem;">
-                <div class="form-group"><label>Game piece capacity</label><input id="pitCap" type="number" placeholder="# balls held" /></div>
-                <div class="form-group"><label>Average BPS</label><input id="pitBps" type="number" step="0.1" placeholder="balls / sec" /></div>
-              </div>
-              <label>Preferred shooting locations <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(tap field)</span></label>
-              <div class="fieldmap" id="shootMap" data-kind="shoot"><div class="midline"></div><div class="circ"></div></div>
-              <button class="btn ghost sm" style="margin-top:.5rem;" onclick="clearMap('shootMap')">Clear dots</button>
-
-              <div class="chk-row" style="margin-top:1rem;"><span>Robot type</span>
-                <div class="seg" id="robotTypeSeg"><button class="on" data-rt="Over bump">Over the bump</button><button data-rt="Under trench">Under trench</button></div></div>
-
-              <div class="chk-row"><span>Can pass game pieces?</span>
-                <div class="seg yn" data-yn="pass"><button class="yes on" data-v="1">Yes</button><button class="no" data-v="0">No</button></div></div>
-              <label style="margin-top:.5rem;">Passing method</label>
-              <div class="seg" id="passMethod"><button class="on" data-pm="Targeted">Targeted</button><button data-pm="Random">Random</button></div>
-              <label style="margin-top:.8rem;">Passing locations <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(tap field)</span></label>
-              <div class="fieldmap" id="passMap" data-kind="pass"><div class="midline"></div><div class="circ"></div></div>
-              <button class="btn ghost sm" style="margin-top:.5rem;" onclick="clearMap('passMap')">Clear dots</button>
-            </div>
-
-            <!-- 5 ops -->
-            <div class="card" style="margin-bottom:1.2rem;">
-              <div class="subhead">5 · Team Operations &amp; Quality</div>
-              <div class="field-row">
-                <div class="form-group"><label>Total batteries</label><input id="pitBatt" type="number" placeholder="#" /></div>
-                <div class="form-group"><label>Charge simultaneously</label><input id="pitCharge" type="number" placeholder="#" /></div>
-              </div>
-              <div class="field-row">
-                <div class="form-group"><label>Driver experience (yrs)</label><input id="pitDriverExp" type="number" placeholder="yrs" /></div>
-                <div class="form-group"><label>Coach experience (yrs)</label><input id="pitCoachExp" type="number" placeholder="yrs" /></div>
-              </div>
-              <div class="field-row">
-                <div class="form-group"><label>Robot iteration</label><select id="pitIter"><option>None</option><option>Minor</option><option>Major</option><option>Rebuilt</option></select></div>
-                <div class="form-group"><label>Programming language</label><select id="pitLang"><option>Java</option><option>C++</option><option>Python</option><option>LabVIEW</option><option>Kotlin</option></select></div>
-              </div>
-              <label>Electrical quality checklist</label>
-              <div id="qualityList"></div>
-            </div>
-
-            <!-- 6 auto -->
-            <div class="card" style="margin-bottom:1.2rem;">
-              <div class="subhead">6 · Autonomous &amp; Notes</div>
-              <label>Interactive auto mapper <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">(tap to drop path points)</span></label>
-              <div class="fieldmap" id="autoMap" data-kind="auto"><div class="midline"></div><div class="circ"></div><svg class="autopath" id="autoSvg"></svg></div>
-              <button class="btn ghost sm" style="margin-top:.5rem;" onclick="clearMap('autoMap')">Clear path</button>
-              <div class="form-group" style="margin-top:.9rem;"><label>Custom notes</label><textarea id="pitNotes" placeholder="Anything qualitative - quirks, strengths, weaknesses…"></textarea></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="subhead">Saved pit reports</div>
-          <div style="overflow-x:auto;"><table><thead><tr><th>Team</th><th>Drivetrain</th><th>Capacity</th><th>BPS</th><th>Vision</th><th>By</th></tr></thead><tbody id="pitSaved"></tbody></table></div>
-        </div>
-      </section>
-
-      <!-- ░░ MATCH SCOUT ░░ -->
-      <section class="page" id="page-match">
-        <div class="page-head"><div><div class="section-label">Time-tracked actions</div><h1>Match Scout</h1>
-        <p>Join your group, pick the match, tap your robot. Every one of the 7 action segments is automatically time-tracked - we know exactly what the robot did, at which second, for how long.</p></div></div>
-
-        <!-- step 1: pick match/robot -->
-        <div id="msSetup">
-          <div class="grid2">
-            <div class="card">
-              <div class="subhead">1 · Select match</div>
-              <div class="form-group"><label>Group</label><input value="CMP-JOHNSON-A" readonly /></div>
-              <div class="form-group"><label>Match</label><select id="msMatch"></select></div>
-            </div>
-            <div class="card">
-              <div class="subhead">2 · Tap the robot to scout</div>
-              <div id="msRobots" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;"></div>
-              <button class="btn full" style="margin-top:1rem;" id="msStartBtn" disabled onclick="startScouting()">Start scouting →</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- step 2: live match -->
-        <div id="msLive" class="hidden">
-          <div class="card" style="margin-bottom:1.2rem;">
-            <div class="timer-box">
-              <div>
-                <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Scouting <b id="msTeamLbl" style="color:var(--text);"></b> · <span id="msMatchLbl"></span></div>
-                <div class="bigtimer" id="msTimer">0:00</div>
-              </div>
-              <div class="phase-pill auto" id="msPhase">Pre-match</div>
-              <button class="btn green" id="msMatchBtn" onclick="toggleMatch()">Start Match</button>
-              <button class="btn ghost sm" onclick="abortMatch()">Cancel</button>
-            </div>
-          </div>
-          <div class="action-grid" id="actionGrid"></div>
-          <div class="grid2" style="margin-top:1.2rem;">
-            <div class="card"><div class="subhead">Live event log</div><div class="eventlog" id="msLog"><div class="ev m" style="color:var(--muted);">Press <b style="color:var(--green);">Start Match</b> then tap actions as the robot performs them…</div></div></div>
-            <div class="card"><div class="subhead">Time-on-task</div><div id="msBreakdown" style="font-size:.84rem;color:var(--muted);">No data yet.</div></div>
-          </div>
-        </div>
-
-        <!-- step 3: summary -->
-        <div id="msSummary" class="hidden"></div>
-      </section>
-
-      <!-- ░░ CV SCOREBOARD ░░ -->
-      <section class="page" id="page-cv">
-        <div class="page-head"><div><div class="section-label">Parallel tracking · Computer Vision</div><h1>CV Scoreboard Tracker</h1>
-        <p>We don't ask scouts to count every game piece. A parallel Computer-Vision system reads the official livestream scoreboard and logs every point change - which alliance, at which second - then feeds the BPS solver.</p></div></div>
-
-        <div class="grid2" style="margin-bottom:1.2rem;">
-          <div class="card">
-            <div class="subhead">1 · Scoreboard processing</div>
-            <p style="font-size:.84rem;color:var(--muted2);margin-bottom:.8rem;">Hook into the match livestream and select the official FRC scoreboard region on screen.</p>
-            <div class="form-group"><label>Match video source</label><input id="cvSrc" value="twitch.tv/firstinspires · Johnson Q-48" /></div>
-            <div class="chk-row"><span>Processing speed</span>
-              <div class="seg" id="cvSpeed"><button data-sp="1">1×</button><button class="on" data-sp="3">3×</button><button data-sp="5">5×</button></div></div>
-            <div class="chk-row"><span>Scoreboard region locked</span><span class="tag green">✓ calibrated</span></div>
-            <button class="btn full green" style="margin-top:1rem;" id="cvRunBtn" onclick="runCV()">Process match</button>
-          </div>
-          <div class="card">
-            <div class="subhead">2 · Real-time logging</div>
-            <div class="scrub" style="margin-bottom:.8rem;"><span id="cvClock">0:00</span><div class="scrubbar"><i id="cvBar"></i></div><span id="cvSpeedLbl">3× speed</span></div>
-            <div class="terminal" id="cvTerm"><div class="ln m">// idle - press “Process match” to begin OCR of the scoreboard…</div></div>
-          </div>
-        </div>
-
-        <div class="grid2">
-          <div class="card">
-            <div class="subhead">3 · JSON output <button class="btn ghost sm" style="float:right;" onclick="toast('Uploaded to Google Drive')">Push to Drive</button></div>
-            <p style="font-size:.8rem;color:var(--muted2);margin-bottom:.6rem;">Every score fluctuation + exact timestamp, ready for the dashboard import.</p>
-            <div class="terminal" id="cvJson" style="max-height:240px;"><div class="ln m">// no deltas yet</div></div>
-          </div>
-          <div class="card">
-            <div class="subhead">4 · Data pipeline</div>
-            <div class="passcard" style="margin-bottom:.7rem;"><div class="num">A</div><div><b>Operator logs matches</b><p>One person runs the CV system at 3× and exports the JSON of score deltas.</p></div></div>
-            <div class="passcard" style="margin-bottom:.7rem;"><div class="num">B</div><div><b>Upload to Google Drive</b><p>JSONs drop into a shared Drive folder, organized by match.</p></div></div>
-            <div class="passcard"><div class="num">C</div><div><b>Import &amp; populate</b><p>A teammate imports the logs; analytics + BPS recompute instantly.</p></div></div>
-            <div class="divider"></div>
-            <div class="subhead" style="font-size:.92rem;">Advanced metrics this unlocks</div>
-            <div class="feature-li">Average scoring per match, per robot</div>
-            <div class="feature-li">Scoring efficiency over time</div>
-            <div class="feature-li">Lost scoring opportunities under defensive pressure</div>
-            <div class="feature-li">Quantified impact of defense on scoring</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ░░ BPS MODEL ░░ -->
-      <section class="page" id="page-bps">
-        <div class="page-head"><div><div class="section-label">The math behind the system</div><h1>The BPS Model</h1>
-        <p>Traditional OPR uses one linear equation per match - treating 2.5 minutes as a single aggregate. We slice each match into per-second windows for a far more honest, granular, physically-grounded metric.</p></div></div>
-
-        <div class="card" style="margin-bottom:1.2rem;">
-          <div class="subhead">Windowed equations</div>
-          <p style="font-size:.85rem;color:var(--muted2);">A new window opens whenever scouts flag a change in the set of robots actively scoring. Instead of one equation per match, we get dozens - far finer attribution. Each window <span class="mono">w</span> gives one linear equation:</p>
-          <div class="formula">Σ<sub>i∈A<span class="v">w</span></sub> BPS<sub>i</sub> · L<span class="v">w</span> ≈ S<span class="v">w</span></div>
-          <div class="grid3">
-            <div class="feature-li"><span><b class="mono">A<sub>w</sub></b> - set of teams flagged scoring in window <span class="mono">w</span></span></div>
-            <div class="feature-li"><span><b class="mono">L<sub>w</sub></b> - exact window duration (seconds)</span></div>
-            <div class="feature-li"><span><b class="mono">S<sub>w</sub></b> - positive score gained (from CV tracker)</span></div>
-          </div>
-          <div class="feature-li" style="margin-top:.4rem;"><span><b class="mono">BPS<sub>i</sub></b> - team i's points-per-second rate, the unknown we solve for</span></div>
-        </div>
-
-        <div class="card" style="margin-bottom:1.2rem;">
-          <div class="subhead">How we solve it - Weighted Ridge + NNLS</div>
-          <p style="font-size:.85rem;color:var(--muted2);">Robots can't score negative points and have real mechanical limits, so we solve a bounded, regularized least-squares problem:</p>
-          <div class="formula">β = argmin ‖W<sup>½</sup>(Xβ − Y)‖² + λ‖β‖²&nbsp;&nbsp;s.t.&nbsp;&nbsp;0 ≤ β<span class="v">j</span> ≤ cap<span class="v">j</span></div>
-          <div class="grid3">
-            <div class="passcard"><div class="num">W</div><div><b>Weighted matrix</b><p>Longer, isolated windows carry more mathematical weight.</p></div></div>
-            <div class="passcard"><div class="num">λ</div><div><b>Adaptive ridge penalty</b><p>Keeps near-singular alliance matrices stable - Gaussian elimination w/ partial pivoting.</p></div></div>
-            <div class="passcard"><div class="num">≤</div><div><b>Non-negativity &amp; caps</b><p>Forces the math to obey real physics - a turret can't beat its intake ceiling.</p></div></div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom:1.2rem;">
-          <div class="subhead">Advanced optimization passes</div>
-          <div class="grid2">
-            <div class="passcard"><div class="num">1</div><div><b>Two-pass prior shrinkage</b><p>Pass 1 computes event-wide baseline BPS priors; Pass 2 re-solves each match, shrinking outliers toward those priors.</p></div></div>
-            <div class="passcard"><div class="num">2</div><div><b>Time-sync auto-tuning</b><p>Applies a small (±3 s) shift to align human scout flags with actual CV score deltas.</p></div></div>
-            <div class="passcard"><div class="num">3</div><div><b>Per-phase breakdown</b><p>Calculates independent <span class="mono">autoBps</span> and <span class="mono">teleopBps</span> metrics.</p></div></div>
-            <div class="passcard"><div class="num">4</div><div><b>Anomaly cleanup</b><p>Scores with no plausible flagged team are redistributed; obvious misflags are stripped.</p></div></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="subhead">Why not just use OPR or EPA?</div>
-          <div style="overflow-x:auto;">
-          <table>
-            <thead><tr><th>Aspect</th><th style="color:#ffd877;">Our BPS</th><th>OPR</th><th>EPA</th></tr></thead>
-            <tbody>
-              <tr><td><b>Granularity</b></td><td>Per-second windows</td><td>Per-match aggregate</td><td>Possession-based</td></tr>
-              <tr><td><b>Solver</b></td><td>Weighted ridge + NNLS</td><td>Plain least squares</td><td>ML model</td></tr>
-              <tr><td><b>Data source</b></td><td>Heavily uses scouting flags</td><td>Match results only</td><td>Match results only</td></tr>
-            </tbody>
-          </table>
-          </div>
-          <p style="font-size:.84rem;color:var(--muted2);margin-top:1rem;">In short: a bespoke, weighted ridge non-negative least-squares model running at per-second granularity. Same linear-algebra roots as classic FRC metrics - but forced to obey live scouting telemetry.</p>
-        </div>
-      </section>
-
-      <!-- ░░ LEADERBOARD ░░ -->
-      <section class="page" id="page-leaderboard">
-        <div class="page-head"><div><div class="section-label">Recognizing the grind</div><h1>Scout Leaderboard</h1>
-        <p>None of this works without the people. Every scout who registers appears here, and the board advances live as they log matches and pit reports.</p></div></div>
-        <div class="stat-grid">
-          <div class="stat"><div class="sv" id="lbMatches">-</div><div class="sl">Total matches scouted</div></div>
-          <div class="stat"><div class="sv" id="lbHours">-</div><div class="sl">Total scout-hours</div></div>
-          <div class="stat"><div class="sv" id="lbScouts">-</div><div class="sl">Active scouts</div></div>
-          <div class="stat"><div class="sv" id="lbTop">-</div><div class="sl">Top scout</div></div>
-        </div>
-        <div class="card">
-          <div style="overflow-x:auto;"><table><thead><tr><th>#</th><th>Scout</th><th>Matches</th><th>Hours</th><th>Pit reports</th><th>Contribution</th></tr></thead><tbody id="lbBody"></tbody></table></div>
-        </div>
-      </section>
-
-      <!-- ░░ FUTURE ░░ -->
-      <section class="page" id="page-future">
-        <div class="page-head"><div><div class="section-label">Future plans &amp; iterations</div><h1>Roadmap</h1>
-        <p>We're happy with the results - but if we pulled this off, we can do better. Here's what's next.</p></div></div>
-        <div class="grid2">
-          <div class="card"><div class="subhead">Local scoreboard recording</div><p style="font-size:.85rem;color:var(--muted2);">Stop relying 100% on the official livestream (stream lag/drops hurt us). Physically record the arena scoreboard locally to eliminate internet dependency entirely.</p></div>
-          <div class="card"><div class="subhead">Further CV speed optimization</div><p style="font-size:.85rem;color:var(--muted2);">Find new ways to push the CV pipeline beyond the current 3× so we can process matches even faster during high-intensity brackets.</p></div>
-          <div class="card"><div class="subhead">Scaling up scouter power</div><p style="font-size:.85rem;color:var(--muted2);">Expand the scouting subteam and add human power to manage the workflow more efficiently when the schedule gets brutal.</p></div>
-          <div class="card"><div class="subhead">Streamlining auto-path tracking</div><p style="font-size:.85rem;color:var(--muted2);">Auto mapping is manual and slow. Inspired by 498 The Cobra Commanders: open the video next to the map, click the robot's position second-by-second, and auto-generate the timestamped path.</p></div>
-        </div>
-        <div class="card" style="margin-top:1.2rem;text-align:center;">
-          <p style="font-size:.9rem;color:var(--muted2);">During the off-season we'll sit down with our scouters and the whole team to review the entire workflow, gather feedback on what worked best, and brainstorm even more ways to elevate the platform. <b style="color:var(--text);">This platform completely transformed our 2026 season.</b></p>
-          <p style="margin-top:1rem;font-family:var(--disp);color:var(--red);font-weight:600;">— Golden Horn 8159</p>
-        </div>
-      </section>
-
+    <main class="main" id="main">
+      <section class="page active" id="page-home"></section>
+      <section class="page" id="page-analytics"></section>
+      <section class="page" id="page-compare"></section>
+      <section class="page" id="page-predictor"></section>
+      <section class="page" id="page-picklist"></section>
+      <section class="page" id="page-draft"></section>
+      <section class="page" id="page-projection"></section>
+      <section class="page" id="page-schedule"></section>
+      <section class="page" id="page-assignments"></section>
+      <section class="page" id="page-prescout"></section>
+      <section class="page" id="page-pit"></section>
+      <section class="page" id="page-match"></section>
+      <section class="page" id="page-cv"></section>
+      <section class="page" id="page-bps"></section>
+      <section class="page" id="page-leaderboard"></section>
+      <section class="page" id="page-data"></section>
+      <section class="page" id="page-roadmap"></section>
     </main>
   </div>
 </div>
 
-<!-- DATA SOURCE MODAL -->
-<div id="cfgModal" class="modal-bg">
-  <div class="modal">
-    <div class="subhead">Live data source</div>
-    <p style="font-size:.82rem;color:var(--muted2);margin-bottom:1rem;">We pull real FRC data at runtime. <b>Statbotics</b> (EPA, no key) is tried automatically. For real <b>OPR</b>, rankings, records and the actual match schedule, add a free <b>The Blue Alliance</b> read key.</p>
-    <div class="form-group"><label>Event key</label><input id="cfgEvent" placeholder="2026tuis3" /></div>
-    <div class="form-group"><label>The Blue Alliance auth key <span style="text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400;">(optional)</span></label><input id="cfgKey" type="password" placeholder="paste your read API key" /></div>
-    <p style="font-size:.74rem;color:var(--muted);margin-bottom:1rem;">Get a free key at <span class="mono">thebluealliance.com/account</span> → Read API Keys. Stored only in your browser (localStorage).</p>
-    <div style="display:flex;gap:.6rem;">
-      <button class="btn full" onclick="refreshLive();closeCfg();">↻ Connect &amp; pull data</button>
-      <button class="btn ghost" onclick="closeCfg()">Close</button>
-    </div>
+<!-- ══════════════════ OVERLAYS ══════════════════ -->
+<div class="overlay" id="overlay-modal"   aria-hidden="true" role="dialog" aria-modal="true"><div class="modal"></div></div>
+<div class="overlay" id="overlay-drawer"  aria-hidden="true" role="dialog" aria-modal="true"><div class="drawer"></div></div>
+<div class="overlay" id="overlay-palette" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="palette">
+    <input id="pal-input" type="text" placeholder="Search teams, pages and actions…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="pal-list" />
+    <div class="pal-list" id="pal-list" role="listbox"></div>
   </div>
 </div>
-<div id="toast"></div>
 
-<script>
-/* ════════════ REAL DATA ════════════
-   Roster verified from The Blue Alliance - Marmara Regional 2026 (event 2026tuis3),
-   the real İstanbul event Team 8159 Golden Horn competed at. Live metrics (OPR/EPA/rankings/
-   records/match schedule) are pulled at runtime from Statbotics (no key) + The Blue
-   Alliance (your free key). When both are unreachable we fall back to the real roster
-   with clearly-labelled demo metrics. */
-const ROSTER=[
-  {team:5655,name:"KelRot"},{team:5665,name:"FENERBAH\u00c7E DOGUS SPARC"},{team:6038,name:"ITOBOT"},
-  {team:6459,name:"AG Robotik"},{team:6941,name:"IronPulse Robotics"},{team:6948,name:"EAGLES"},
-  {team:7086,name:"IOROBOT"},{team:7466,name:"Cymurghs"},{team:7742,name:"Cosmos Robot Works"},
-  {team:8056,name:"Laissez Faire"},{team:8153,name:"Tech4Peace"},{team:8159,name:"Golden Horn"},
-  {team:8209,name:"SEZMECH"},{team:8595,name:"This Is How We Play"},{team:8747,name:"BLACK SEA ROBOTICS"},
-  {team:8795,name:"The Chaotics"},{team:8806,name:"Our Lady of Providence Dream League"},{team:9020,name:"MCT Galatasaray Robotics"},
-  {team:9025,name:"Mechameleons"},{team:9026,name:"Aero"},{team:9028,name:"GFORCE"},
-  {team:9043,name:"Valkyrie"},{team:9231,name:"Haydarpasa Panthers"},{team:9451,name:"Aydos"},
-  {team:9468,name:"Team Sirius"},{team:9692,name:"Sigma"},{team:10131,name:"Royal Turtles"},
-  {team:10132,name:"Kuanta Robotics"},{team:10185,name:"Nexify Robotics"},{team:10205,name:"MAGNETAR"},
-  {team:10234,name:"TEDRA"},{team:10383,name:"Robistim"},{team:10502,name:"HARPIA ROBOTICS"},
-  {team:10576,name:"ASHINA"},{team:10598,name:"TADroid"},{team:10947,name:"Antioch Rising"},
-  {team:10953,name:"LYRON"},{team:10959,name:"ORHANIYE R SPORTS"},{team:10999,name:"Cezeri Robotics"},
-  {team:11000,name:"NEOCHIRON"},{team:11120,name:"Frostbite Robotics"},{team:11216,name:"FLAZIA ROBOTICS"},
-  {team:11240,name:"Rotatech"}
-];
-const TEAM_NAMES=Object.fromEntries(ROSTER.map(r=>[r.team,r.name])); // alias used across UI
-const DIV_TEAMS=ROSTER.map(r=>r.team);
-function teamName(t){const r=(TEAMS||[]).find(x=>x.team===t);return (r&&r.name)||TEAM_NAMES[t]||("Team "+t);}
-function rnd(s){let x=Math.sin(s)*10000;return x-Math.floor(x);}
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
 
-// Persisted live-data config - TBA read key embedded so the app is ALWAYS live.
-const TBA_KEY='0WFrGIMesW5oqvRqeCkkHHY6mqLROTI4CPuCKR6Az2oE2XgVDwXoODb2tTPeP6Ft';
-const DATA={
-  event: localStorage.getItem('gh_event')||'2026tuis3',
-  tbaKey: localStorage.getItem('gh_tba')||TBA_KEY,
-  source:'offline', updated:null
-};
-
-// Deterministic demo metrics on the REAL roster (used only until live data loads)
-function demoMetrics(){
-  return ROSTER.map((r,i)=>{
-    const t=r.team, base=(rnd(t*3.1+i)*0.9+0.35);
-    const bps=+((base*1.9+(t===8159?0.9:0))).toFixed(2);
-    const autoBps=+(bps*(0.22+rnd(t*1.7)*0.12)).toFixed(2);
-    const opr=+(bps*22*(0.9+rnd(t*2.3)*0.25)).toFixed(1);
-    return {team:t,name:r.name,bps,autoBps,teleopBps:+(bps-autoBps).toFixed(2),
-      opr,epa:+(opr*(0.92+rnd(t*0.7)*0.16)).toFixed(1),
-      eff:Math.round(58+rnd(t*5.5)*40),defImpact:-Math.round(rnd(t*4.2)*38),
-      matches:Math.round(8+rnd(t*6.6)*4),record:null,evtRank:null,live:false};
-  });
-}
-function rankSort(a){const anyLive=a.some(t=>t.live&&t.opr!=null);const key=t=>t.opr!=null?t.opr:(anyLive?-1e9:(t.bps||0)*100);return a.sort((x,y)=>key(y)-key(x)).map((r,i)=>({...r,rank:i+1}));}
-function nn(v){return v==null?'-':v;}
-let TEAMS=rankSort(demoMetrics());
-let REAL_MATCHES=null;
-
-// ── live fetch layer ──
-async function fetchJSON(url,headers,timeout){
-  const ac=new AbortController();const to=setTimeout(()=>ac.abort(),timeout||9000);
-  try{const r=await fetch(url,{headers:headers||{},signal:ac.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json();}
-  finally{clearTimeout(to);}
-}
-function pick(o,paths){for(const p of paths){let v=o,ok=true;for(const k of p.split('.')){if(v&&typeof v==='object'&&k in v)v=v[k];else{ok=false;break;}}if(ok&&v!=null&&typeof v!=='object')return v;}return null;}
-
-async function loadLive(){
-  setBanner('loading');
-  const ev=DATA.event, merged={}; let usedSource=null, oprMap=null, dprMap=null, ccwmMap=null;
-  // 1) Statbotics - no key, gives EPA + names + record + rank
-  try{
-    const sb=await fetchJSON(`https://api.statbotics.io/v3/team_events?event=${encodeURIComponent(ev)}&limit=200`,null,2500);
-    if(Array.isArray(sb)&&sb.length){
-      sb.forEach(r=>{const t=r.team; if(!t)return;
-        const rec=r.record&&(r.record.qual||r.record.total||r.record);
-        merged[t]={name:r.team_name||r.name,
-          epa:pick(r,['epa.breakdown.total_points','epa.total_points.mean','epa.total_points','epa_end']),
-          epaAuto:pick(r,['epa.breakdown.auto_points','epa.auto_points.mean','epa.auto_points']),
-          epaTele:pick(r,['epa.breakdown.teleop_points','epa.teleop_points.mean','epa.teleop_points']),
-          rank:r.rank, record:rec?`${rec.wins}-${rec.losses}-${rec.ties}`:null};
-      });
-      usedSource='statbotics';
-    }
-  }catch(e){/* statbotics down */}
-  // 2) The Blue Alliance - needs key, gives real OPR + names + rankings + match schedule
-  if(DATA.tbaKey){
-    const H={'X-TBA-Auth-Key':DATA.tbaKey}, B=`https://www.thebluealliance.com/api/v3/event/${ev}`;
-    try{const o=await fetchJSON(`${B}/oprs`,H); oprMap=o.oprs||null; dprMap=o.dprs||null; ccwmMap=o.ccwms||null;}catch(e){}
-    try{const ts=await fetchJSON(`${B}/teams/simple`,H); ts.forEach(t=>{const n=t.team_number;merged[n]=merged[n]||{};merged[n].name=t.nickname||merged[n].name;merged[n].loc=[t.city,t.country].filter(Boolean).join(', ');}); usedSource='tba';}catch(e){}
-    try{const rk=await fetchJSON(`${B}/rankings`,H); (rk&&rk.rankings||[]).forEach(r=>{const n=+r.team_key.replace('frc','');merged[n]=merged[n]||{};merged[n].rank=r.rank;if(r.record)merged[n].record=`${r.record.wins}-${r.record.losses}-${r.record.ties}`;});}catch(e){}
-    try{const ms=await fetchJSON(`${B}/matches/simple`,H); REAL_MATCHES=ms.filter(m=>m.comp_level==='qm').sort((a,b)=>a.match_number-b.match_number).map(m=>({id:'Q-'+m.match_number,red:m.alliances.red.team_keys.map(k=>+k.replace('frc','')),blue:m.alliances.blue.team_keys.map(k=>+k.replace('frc',''))}));}catch(e){}
-    if(oprMap)usedSource='tba';
-  }
-  const ids=Object.keys(merged).map(Number);
-  if(!ids.length){DATA.source='offline';DATA.updated=null;setBanner('offline');return;}
-  const all=[...new Set([...DIV_TEAMS,...ids])];
-  const demo=rankSort(demoMetrics());
-  const built=all.map(t=>{
-    const m=merged[t]||{}, d=demo.find(x=>x.team===t);
-    const opr=oprMap&&oprMap['frc'+t]!=null?+oprMap['frc'+t]:null;
-    const dpr=dprMap&&dprMap['frc'+t]!=null?+dprMap['frc'+t]:null;
-    const ccwm=ccwmMap&&ccwmMap['frc'+t]!=null?+ccwmMap['frc'+t]:null;
-    const epa=m.epa!=null?+m.epa:null;
-    const basis=opr!=null?opr:epa;                     // BPS = scoring-rate index derived from real OPR
-    const bps=basis!=null?+(basis/100).toFixed(2):(d?d.bps:0);
-    const autoBps=m.epaAuto!=null?+(m.epaAuto/100).toFixed(2):+(bps*0.3).toFixed(2);
-    let w=0,l=0,ti=0; if(m.record){const p=m.record.split('-').map(Number);w=p[0]||0;l=p[1]||0;ti=p[2]||0;}
-    const games=w+l+ti;
-    return {team:t,name:m.name||TEAM_NAMES[t]||('Team '+t),loc:m.loc||'',
-      bps,autoBps,teleopBps:+(bps-autoBps).toFixed(2),
-      opr:opr!=null?+opr.toFixed(1):(epa!=null?+epa.toFixed(1):null),
-      epa:epa!=null?+epa.toFixed(1):null,
-      ccwm:ccwm!=null?+ccwm.toFixed(1):null,
-      eff:games?Math.round(w/games*100):null,
-      defImpact:dpr!=null?+dpr.toFixed(1):null,
-      matches:games||null, wins:w, record:m.record||null, evtRank:m.rank||null, live:true};
-  });
-  TEAMS=rankSort(built);
-  DATA.source=usedSource; DATA.updated=new Date();
-  refreshAll(); setBanner('live');
-}
-function refreshLive(){
-  DATA.event=(document.getElementById('cfgEvent').value||'2026tuis3').trim();
-  DATA.tbaKey=(document.getElementById('cfgKey').value||'').trim();
-  localStorage.setItem('gh_event',DATA.event); localStorage.setItem('gh_tba',DATA.tbaKey);
-  loadLive();
-}
-function setBanner(state){
-  const b=document.getElementById('liveBanner'); if(!b)return;
-  const cnt=TEAMS.filter(x=>x.live).length;
-  if(state==='loading'){b.innerHTML=`<span class="tag">Fetching</span> Pulling live data for <b>${DATA.event}</b>…`;return;}
-  if(state==='live'){const src=DATA.source==='tba'?'The Blue Alliance (live OPR)':'Statbotics (live EPA)';
-    b.innerHTML=`<span class="tag green">Live</span> ${src} · <b>${DATA.event}</b> · ${cnt} teams · updated ${DATA.updated.toLocaleTimeString()} <button class="btn ghost sm" style="margin-left:auto" onclick="openCfg()">Data source</button>`;return;}
-  b.innerHTML=`<span class="tag">Demo</span> Real Marmara Regional roster · demo metrics (Statbotics offline${DATA.tbaKey?'':' · add a TBA key for live OPR'}) <button class="btn ghost sm" style="margin-left:auto" onclick="openCfg()">Connect live data</button>`;
-}
-function openCfg(){document.getElementById('cfgModal').classList.add('show');document.getElementById('cfgEvent').value=DATA.event;document.getElementById('cfgKey').value=DATA.tbaKey;}
-function closeCfg(){document.getElementById('cfgModal').classList.remove('show');}
-
-const ACTIONS=[
-  {k:"Scoring",e:"",c:"#f5b705"},{k:"Intaking",e:"",c:"#22c55e"},
-  {k:"Passing",e:"",c:"#22d3ee"},{k:"Climbing",e:"",c:"#f5a524"},
-  {k:"Defending",e:"",c:"#a855f7"},{k:"Traveling",e:"",c:"#3b82f6"},
-  {k:"Idle",e:"",c:"#64748b"}
-];
-const QUALITY=["Is wiring clean?","Are components protected?","Any loose wires?","Excess wiring?"];
-
-/* ════════════ STATE ════════════ */
-let SELROLE="Scout", USER=null;
-let pit={dt:"Swerve",wheel:"Colson",intake:"Over Bumper",rt:"Over bump",passMethod:"Targeted",vision:1,pass:1,
-  visionAreas:["Autonomous","Game Piece Collection","Localization"],unit:"metric",quality:{},shootDots:[],passDots:[],autoDots:[]};
-let savedPits=[];
-let APP_READY=false;
-
-/* ════════════ ACCOUNTS (saved in localStorage) ════════════ */
-function getAccounts(){try{return JSON.parse(localStorage.getItem('gh_accounts')||'{}');}catch(e){return {};}}
-function saveAccounts(a){localStorage.setItem('gh_accounts',JSON.stringify(a));}
-// credit the signed-in scout's contribution and push to the shared leaderboard
-function bumpStat(field,n){
-  if(!USER)return;
-  const accts=getAccounts();const a=accts[USER.email];if(!a)return;
-  a[field]=(a[field]||0)+n;saveAccounts(accts);
-  syncBoard(true);
-}
-
-/* ════ SHARED LEADERBOARD ════
-   Cross-device board backed by a hosted JSON store. Only public fields
-   (display name + tallies, keyed by a hashed id) are shared — never emails
-   or passwords. Concurrent devices converge via per-scout max on the
-   monotonic counters; localStorage is the offline fallback. */
-const BOARD_URL='https://jsonblob.com/api/jsonBlob/019f994c-0bc4-7236-bcdd-1599ccf838bd';
-let BOARD={}, boardTimer=null;
-function pubId(email){return hash((email||'').toLowerCase());}
-function loadBoardCache(){try{BOARD=JSON.parse(localStorage.getItem('gh_board')||'{}');}catch(e){BOARD={};}}
-function localPublic(){const o={};for(const a of Object.values(getAccounts())){o[pubId(a.email)]={name:a.name,matches:a.matches||0,pit:a.pit||0};}return o;}
-function mergeBoards(a,b){const out={};for(const src of [a,b]){for(const id in src){const v=src[id]||{},e=out[id];out[id]=e?{name:v.name||e.name,matches:Math.max(e.matches||0,v.matches||0),pit:Math.max(e.pit||0,v.pit||0)}:{name:v.name||'Scout',matches:v.matches||0,pit:v.pit||0};}}return out;}
-async function syncBoard(push){
-  BOARD=mergeBoards(BOARD,localPublic());            // fold in this device's latest
-  try{
-    const r=await fetch(BOARD_URL,{headers:{'Accept':'application/json'},cache:'no-store'});
-    if(r.ok){const d=await r.json();BOARD=mergeBoards(BOARD,(d&&d.scouts)||{});}
-  }catch(e){/* offline — keep local board */}
-  if(push){
-    try{await fetch(BOARD_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({scouts:BOARD,updated:new Date().toISOString()})});}catch(e){}
-  }
-  localStorage.setItem('gh_board',JSON.stringify(BOARD));
-  if(APP_READY)renderLeaderboard();
-}
-function startBoardPolling(){if(!boardTimer)boardTimer=setInterval(()=>syncBoard(false),20000);}
-// lightweight hash so raw passwords aren't stored in plaintext
-function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))>>>0;return h.toString(16);}
-function updateAcctCount(){const n=Object.keys(getAccounts()).length;const el=document.getElementById('acctCount');if(el)el.textContent=n?`${n} account${n>1?'s':''} saved on this device`:'No accounts yet - create one to get started';}
-function showErr(id,msg){const e=document.getElementById(id);e.textContent=msg;e.classList.add('show');}
-function clearErr(id){document.getElementById(id).classList.remove('show');}
-
-function switchAuth(tab){
-  document.querySelectorAll('.auth-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
-  document.getElementById('paneIn').classList.toggle('active',tab==='in');
-  document.getElementById('paneUp').classList.toggle('active',tab==='up');
-}
-document.getElementById('roleGrid').addEventListener('click',e=>{
-  const c=e.target.closest('.role-card');if(!c)return;
-  document.querySelectorAll('#roleGrid .role-card').forEach(x=>x.classList.remove('sel'));
-  c.classList.add('sel');SELROLE=c.dataset.role;
-});
-
-function signUp(){
-  clearErr('upErr');document.getElementById('upOk').classList.remove('show');
-  const name=document.getElementById('upName').value.trim();
-  const email=document.getElementById('upEmail').value.trim().toLowerCase();
-  const pass=document.getElementById('upPass').value;
-  const group=document.getElementById('upGroup').value.trim()||'MARMARA-A';
-  if(!name)return showErr('upErr','Please enter your full name.');
-  if(!/^\S+@\S+\.\S+$/.test(email))return showErr('upErr','Please enter a valid email address.');
-  if(pass.length<6)return showErr('upErr','Password must be at least 6 characters.');
-  const accts=getAccounts();
-  if(accts[email])return showErr('upErr','An account with that email already exists - try signing in.');
-  accts[email]={name,email,role:SELROLE,group,pass:hash(pass),created:new Date().toISOString(),matches:0,pit:0};
-  saveAccounts(accts);
-  const ok=document.getElementById('upOk');ok.textContent='✓ Account created & saved. Signing you in…';ok.classList.add('show');
-  updateAcctCount();syncBoard(true);
-  setTimeout(()=>enterApp(accts[email]),650);
-}
-function signIn(){
-  clearErr('inErr');
-  const email=document.getElementById('inEmail').value.trim().toLowerCase();
-  const pass=document.getElementById('inPass').value;
-  const accts=getAccounts();
-  const a=accts[email];
-  if(!a)return showErr('inErr','No account found for that email. Create one first.');
-  if(a.pass!==hash(pass))return showErr('inErr','Incorrect password. Please try again.');
-  enterApp(a);
-}
-function enterApp(account){
-  USER={name:account.name,email:account.email,role:account.role,group:account.group};
-  localStorage.setItem('gh_session',account.email);
-  document.getElementById('login').style.display='none';
-  document.getElementById('app').classList.add('show');
-  document.getElementById('userName').textContent=USER.name;
-  document.getElementById('userRole').textContent=USER.role+" · "+USER.group;
-  document.getElementById('userAv').textContent=USER.name[0].toUpperCase();
-  document.getElementById('hiName').textContent=USER.name.split(' ')[0];
-  if(!APP_READY){initApp();APP_READY=true;}
-}
-function logout(){localStorage.removeItem('gh_session');location.reload();}
-// auto-resume an existing session on load
-function resumeSession(){
-  updateAcctCount();
-  const email=localStorage.getItem('gh_session');
-  if(email){const a=getAccounts()[email];if(a){enterApp(a);return;}}
-}
-
-/* ════════════ NAV ════════════ */
-function go(page){
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  document.getElementById('sidebar').classList.remove('open');
-  window.scrollTo(0,0);
-}
-document.getElementById('nav').addEventListener('click',e=>{const n=e.target.closest('.nav-item');if(n)go(n.dataset.page);});
-
-/* ════════════ INIT ════════════ */
-function initApp(){
-  loadBoardCache();
-  renderHome();renderAnalytics();renderLeaderboard();renderPrescout();
-  syncBoard(false);startBoardPolling();  // pull the shared leaderboard, then keep it fresh
-  buildQuality();buildActions();buildMatchSetup();buildPredictors();initMaps();renderPitSaved();
-  // segment toggles
-  document.querySelectorAll('.seg, .pillset').forEach(bindSeg);
-  setBanner('offline');
-  loadLive(); // pull real data (Statbotics auto; TBA if key saved)
-}
-
-/* ░ HOME ░ */
-function renderHome(){
-  const ranked=[...TEAMS].filter(t=>t.opr!=null).sort((a,b)=>b.opr-a.opr);
-  const top=(ranked.length?ranked:TEAMS).slice(0,6),max=top[0]?(top[0].opr||top[0].bps):1;
-  document.getElementById('homeTop').innerHTML=top.map((t,i)=>{const v=t.opr!=null?t.opr:t.bps;return `
-    <tr onclick="go('analytics')" style="cursor:pointer">
-      <td class="rank ${i<3?'r'+(i+1):''}">${i+1}</td>
-      <td class="teamcell"><b>${t.team}</b> <span style="color:var(--muted)">${t.name}</span>${t.team===8159?' <span class="tag red">us</span>':''}</td>
-      <td class="mono">${v}</td>
-      <td style="width:90px"><div class="barmini"><i style="width:${Math.max(5,v/max*100)}%"></i></div></td>
-    </tr>`;}).join('');
-  document.getElementById('stTeams').textContent=new Set(DIV_TEAMS).size;
-}
-
-/* ░ ANALYTICS ░ */
-let sortKey='opr',sortDir=-1;
-function renderAnalytics(){
-  const oprs=TEAMS.filter(t=>t.opr!=null);
-  const leader=[...oprs].sort((a,b)=>b.opr-a.opr)[0]||TEAMS[0];
-  document.getElementById('anTop').textContent=leader.team;
-  document.getElementById('anAvg').textContent=oprs.length?(oprs.reduce((s,t)=>s+t.opr,0)/oprs.length).toFixed(1):'-';
-  const defs=TEAMS.filter(t=>t.defImpact!=null);
-  const def=defs.length?[...defs].sort((a,b)=>a.defImpact-b.defImpact)[0]:null; // lowest DPR = best defense
-  document.getElementById('anDef').textContent=def?def.team:'-';
-  const effs=TEAMS.filter(t=>t.eff!=null);
-  const eff=effs.length?[...effs].sort((a,b)=>b.eff-a.eff)[0]:null;
-  document.getElementById('anEff').textContent=eff?eff.eff+'%':'-';
-  // chart by real OPR
-  const top=[...oprs].sort((a,b)=>b.opr-a.opr).slice(0,10),mx=top.length?top[0].opr:1;
-  document.getElementById('anChart').innerHTML=top.map(t=>`
-    <div class="bar"><em>${t.opr}</em><i style="height:${Math.max(4,t.opr/mx*100)}%;${t.team===8159?'background:linear-gradient(180deg,var(--gold),var(--amber));':''}"></i><small>${t.team}</small></div>`).join('');
-  renderAnTable();
-}
-function renderAnTable(){
-  const rows=[...TEAMS].sort((a,b)=>{
-    let av=a[sortKey],bv=b[sortKey];
-    if(av==null)return 1; if(bv==null)return -1;
-    return (av>bv?1:av<bv?-1:0)*sortDir;
-  });
-  document.getElementById('anBody').innerHTML=rows.map(t=>`
-    <tr onclick="teamDetail(${t.team})" style="cursor:pointer">
-      <td class="rank ${t.rank<=3?'r'+t.rank:''}">${t.rank}</td>
-      <td class="teamcell"><b>${t.team}</b> <span style="color:var(--muted)">${t.name}</span>${t.team===8159?' <span class="tag red">us</span>':''}</td>
-      <td class="mono" style="color:var(--gold);font-weight:700">${nn(t.opr)}</td>
-      <td class="mono">${t.bps}</td>
-      <td class="mono">${nn(t.epa)}</td>
-      <td class="mono">${nn(t.ccwm)}</td>
-      <td class="mono">${t.eff!=null?t.eff+'%':'-'}</td>
-      <td class="mono">${nn(t.defImpact)}</td>
-      <td class="mono">${t.record||'-'}</td>
-    </tr>`).join('');
-}
-document.getElementById('anTable').addEventListener('click',e=>{
-  const th=e.target.closest('th[data-sort]');if(!th)return;
-  const k=th.dataset.sort;
-  if(k==='rank'){sortKey='opr';sortDir=-1;}
-  else{if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=(k==='team')?1:-1;}}
-  renderAnTable();
-});
-function refreshAll(){renderHome();renderAnalytics();buildPredictors();buildMatchSetup();}
-function teamDetail(tn){
-  const t=TEAMS.find(x=>x.team===tn);const p=savedPits.find(x=>+x.team===tn);
-  toast(`#${t.rank} · ${t.team} ${t.name} - BPS ${t.bps} (auto ${t.autoBps}/teleop ${t.teleopBps}), OPR ${t.opr}, EPA ${t.epa}, eff ${t.eff}%${p?' · pit report on file':''}`);
-}
-
-/* ░ MATCH STRATEGY ░ */
-function buildPredictors(){
-  const opts='<option value="">- select team -</option>'+TEAMS.map(t=>`<option value="${t.team}">${t.team} · ${t.name}${t.opr!=null?` (OPR ${t.opr})`:''}</option>`).join('');
-  document.querySelectorAll('.predSel').forEach((s,i)=>{s.innerHTML=opts;s.selectedIndex=i+1;});
-}
-function predict(){
-  const get=side=>[...document.querySelectorAll(`.predSel[data-side="${side}"]`)].map(s=>TEAMS.find(t=>t.team==s.value)).filter(Boolean);
-  const red=get('red'),blue=get('blue');
-  if(red.length<1||blue.length<1){toast('Pick at least one team per alliance');return;}
-  // OPR = each team's real contribution to alliance score → summed OPR is the projected alliance score
-  const score=a=>a.reduce((s,t)=>s+(t.opr!=null?t.opr:t.bps*100),0);
-  const rS=Math.round(score(red)),bS=Math.round(score(blue));
-  const total=rS+bS,rP=Math.round(rS/total*100),bP=100-rP;
-  const win=rS>bS?'red':'blue';
-  document.getElementById('predResult').innerHTML=`
-    <div class="card">
-      <div class="subhead">Predicted result <span class="tag ${win==='red'?'red':'blue'}">${win==='red'?'Red':'Blue'} favored</span></div>
-      <div style="display:flex;align-items:center;gap:1rem;margin:1rem 0;">
-        <div style="text-align:center;flex:0 0 90px"><div style="font-family:var(--disp);font-size:2rem;font-weight:700;color:#ffd877">${rS}</div><div style="font-size:.7rem;color:var(--muted)">RED</div></div>
-        <div style="flex:1"><div class="barmini" style="height:14px"><i style="width:${rP}%;background:#ffd877"></i></div><div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-top:.3rem"><span>${rP}% win prob</span><span>${bP}%</span></div></div>
-        <div style="text-align:center;flex:0 0 90px"><div style="font-family:var(--disp);font-size:2rem;font-weight:700;color:#8fb8ff">${bS}</div><div style="font-size:.7rem;color:var(--muted)">BLUE</div></div>
-      </div>
-      <p style="font-size:.78rem;color:var(--muted)">Projected from summed real <b>OPR</b> (live from The Blue Alliance) - each team's measured contribution to its alliance score. DPR &amp; pit-noted weaknesses would refine this in a real planning session.</p>
-    </div>`;
-}
-
-/* ░ PRE-SCOUT ░ */
-let psDone=0;const PS_TOTAL=312;
-function renderPrescout(){
-  const teams=[...new Set(DIV_TEAMS)];
-  document.getElementById('psBody').innerHTML=teams.map(t=>{
-    const ev=2+Math.round(rnd(t)*2),m=Math.round(8+rnd(t*2)*6),al=m*2;
-    return `<tr><td class="teamcell"><b>${t}</b> <span style="color:var(--muted)">${TEAM_NAMES[t]||''}</span></td><td>${ev}</td><td class="mono">${m}</td><td class="mono">${al}</td><td><span class="tag green">✓ done</span></td></tr>`;
-  }).join('');
-  updatePS();
-}
-function updatePS(){
-  const pct=Math.round(psDone/PS_TOTAL*100);
-  document.getElementById('psPct').textContent=pct+'%';
-  document.getElementById('psBar').style.width=pct+'%';
-  document.getElementById('psCount').textContent=`${psDone} / ${PS_TOTAL} matches`;
-}
-function runPrescout(){
-  const iv=setInterval(()=>{
-    psDone=Math.min(PS_TOTAL,psDone+Math.round(8+Math.random()*14));
-    updatePS();
-    if(psDone>=PS_TOTAL){clearInterval(iv);toast('✓ Division fully pre-scouted - '+PS_TOTAL+' matches');}
-  },120);
-}
-
-/* ░ PIT SCOUT ░ */
-function bindSeg(container){
-  container.addEventListener('click',e=>{
-    const b=e.target.closest('button');if(!b)return;
-    const multi=container.id==='visionAreas';
-    if(multi){b.classList.toggle('on');pit.visionAreas=[...container.querySelectorAll('button.on')].map(x=>x.dataset.va);return;}
-    [...container.children].forEach(x=>{if(x.tagName==='BUTTON')x.classList.remove('on');});
-    b.classList.add('on');
-    const ds=b.dataset;
-    if(ds.dt){pit.dt=ds.dt;document.getElementById('swerveWrap').style.display=ds.dt==='Swerve'?'block':'none';}
-    if(ds.wheel)pit.wheel=ds.wheel;if(ds.in)pit.intake=ds.in;if(ds.rt)pit.rt=ds.rt;if(ds.pm)pit.passMethod=ds.pm;
-    if(ds.unit&&ds.unit!==pit.unit)convertUnits(ds.unit);
-    if(container.dataset.yn){const yn=container.dataset.yn;pit[yn]=+ds.v;
-      if(yn==='vision')document.getElementById('visionAreas').style.opacity=ds.v==='1'?'1':'.4';
-      if(yn==='pass')document.getElementById('passMethod').style.opacity=ds.v==='1'?'1':'.4';}
-  });
-}
-function convertUnits(to){
-  const fields=document.querySelectorAll('.dim');
-  fields.forEach(f=>{if(!f.value)return;let v=parseFloat(f.value);f.value=(to==='imperial'?v/2.54:v*2.54).toFixed(1);});
-  pit.unit=to;
-  document.querySelectorAll('#page-pit .field-row.three label').forEach((l,i)=>{}); // labels static
-}
-function buildQuality(){
-  document.getElementById('qualityList').innerHTML=QUALITY.map((q,i)=>`
-    <div class="chk-row"><span>${q}</span>
-      <div class="seg yn qchk" data-q="${i}"><button class="yes" data-v="1">Yes</button><button class="no" data-v="0">No</button></div></div>`).join('');
-  document.querySelectorAll('.qchk').forEach(c=>c.addEventListener('click',e=>{
-    const b=e.target.closest('button');if(!b)return;
-    [...c.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');
-    pit.quality[c.dataset.q]=+b.dataset.v;
-  }));
-}
-function initMaps(){
-  ['shootMap','passMap','autoMap'].forEach(id=>{
-    const el=document.getElementById(id);
-    el.addEventListener('click',ev=>{
-      const r=el.getBoundingClientRect();
-      const x=((ev.clientX-r.left)/r.width*100),y=((ev.clientY-r.top)/r.height*100);
-      const kind=el.dataset.kind;
-      const arr=kind==='shoot'?pit.shootDots:kind==='pass'?pit.passDots:pit.autoDots;
-      arr.push({x,y});drawMap(id);
-    });
-  });
-}
-function drawMap(id){
-  const el=document.getElementById(id),kind=el.dataset.kind;
-  const arr=kind==='shoot'?pit.shootDots:kind==='pass'?pit.passDots:pit.autoDots;
-  el.querySelectorAll('.dot').forEach(d=>d.remove());
-  arr.forEach((p,i)=>{
-    const d=document.createElement('div');d.className='dot '+kind;
-    d.style.left=p.x+'%';d.style.top=p.y+'%';
-    if(kind==='auto')d.textContent=i+1;
-    el.appendChild(d);
-  });
-  if(kind==='auto'){
-    const svg=document.getElementById('autoSvg');
-    svg.setAttribute('viewBox','0 0 100 50');
-    svg.innerHTML=arr.length>1?`<polyline points="${arr.map(p=>p.x+','+p.y/2).join(' ')}" fill="none" stroke="var(--green)" stroke-width="0.8" stroke-dasharray="2 1.5"/>`:'';
-  }
-}
-function clearMap(id){
-  const kind=document.getElementById(id).dataset.kind;
-  if(kind==='shoot')pit.shootDots=[];else if(kind==='pass')pit.passDots=[];else pit.autoDots=[];
-  drawMap(id);
-}
-function savePit(){
-  const team=document.getElementById('pitTeam').value.trim();
-  if(!team){toast('Enter a team number first');go('pit');return;}
-  const rec={team,dt:pit.dt,cap:document.getElementById('pitCap').value||'-',bps:document.getElementById('pitBps').value||'-',
-    vision:pit.vision?pit.visionAreas.length+' areas':'No',by:USER.name};
-  savedPits.unshift(rec);renderPitSaved();bumpStat('pit',1);
-  toast('Pit report saved for team '+team);
-}
-function renderPitSaved(){
-  const b=document.getElementById('pitSaved');
-  if(!savedPits.length){b.innerHTML='<tr><td colspan="6" style="color:var(--muted)">No pit reports yet - fill the form and hit Save.</td></tr>';return;}
-  b.innerHTML=savedPits.map(p=>`<tr><td class="teamcell"><b>${p.team}</b></td><td>${p.dt}</td><td class="mono">${p.cap}</td><td class="mono">${p.bps}</td><td>${p.vision}</td><td>${p.by}</td></tr>`).join('');
-}
-
-/* ░ MATCH SCOUT ░ */
-const SYNTH_MATCHES=Array.from({length:12},(_,i)=>{
-  const base=i*6;const pk=n=>DIV_TEAMS[(base+n)%DIV_TEAMS.length];
-  return {id:'Q-'+(1+i),red:[pk(0),pk(1),pk(2)],blue:[pk(3),pk(4),pk(5)]};
-});
-function matchList(){return (REAL_MATCHES&&REAL_MATCHES.length)?REAL_MATCHES:SYNTH_MATCHES;}
-let msSel={match:null,team:null,alliance:null};
-function buildMatchSetup(){
-  const real=REAL_MATCHES&&REAL_MATCHES.length;
-  document.getElementById('msMatch').innerHTML=matchList().map(m=>`<option value="${m.id}">Qual ${m.id.split('-')[1]} - Red ${m.red.join(',')} vs Blue ${m.blue.join(',')}</option>`).join('');
-  document.getElementById('msMatch').onchange=renderMsRobots;
-  renderMsRobots();
-}
-function renderMsRobots(){
-  const L=matchList();const m=L.find(x=>x.id===document.getElementById('msMatch').value)||L[0];
-  msSel.match=m.id;msSel.team=null;
-  const cell=(t,al)=>`<button class="act-btn" style="padding:.7rem .4rem;font-size:.8rem" data-team="${t}" data-al="${al}" onclick="pickRobot(${t},'${al}',this)">${t}<br><span style="font-size:.62rem;color:var(--muted)">${TEAM_NAMES[t]||''}</span></button>`;
-  document.getElementById('msRobots').innerHTML=
-    `<div style="grid-column:1/-1;font-size:.66rem;color:#ffd877;font-weight:700;letter-spacing:.08em">RED</div>`+m.red.map(t=>cell(t,'red')).join('')+
-    `<div style="grid-column:1/-1;font-size:.66rem;color:#8fb8ff;font-weight:700;letter-spacing:.08em;margin-top:.4rem">BLUE</div>`+m.blue.map(t=>cell(t,'blue')).join('');
-  document.getElementById('msStartBtn').disabled=true;
-}
-function pickRobot(t,al,el){
-  msSel.team=t;msSel.alliance=al;
-  document.querySelectorAll('#msRobots .act-btn').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  document.getElementById('msStartBtn').disabled=false;
-}
-let match={running:false,t:0,timer:null,start:0,active:null,activeSince:0,log:[],totals:{}};
-function startScouting(){
-  document.getElementById('msSetup').classList.add('hidden');
-  document.getElementById('msSummary').classList.add('hidden');
-  document.getElementById('msLive').classList.remove('hidden');
-  document.getElementById('msTeamLbl').textContent=msSel.team+' '+(TEAM_NAMES[msSel.team]||'');
-  document.getElementById('msMatchLbl').textContent='Qual '+msSel.match.split('-')[1];
-  match={running:false,t:0,timer:null,start:0,active:null,activeSince:0,log:[],totals:{}};
-  ACTIONS.forEach(a=>match.totals[a.k]=0);
-  document.querySelectorAll('#actionGrid .act-btn').forEach(b=>{b.classList.remove('on');b.querySelector('.at').textContent='0s';});
-  document.getElementById('msTimer').textContent='0:00';
-  document.getElementById('msPhase').textContent='Pre-match';document.getElementById('msPhase').className='phase-pill auto';
-  document.getElementById('msMatchBtn').innerHTML='Start Match';document.getElementById('msMatchBtn').className='btn green';
-  document.getElementById('msLog').innerHTML='<div class="ev m" style="color:var(--muted)">Press <b style="color:var(--green)">Start Match</b> then tap actions as the robot performs them…</div>';
-}
-function buildActions(){
-  document.getElementById('actionGrid').innerHTML=ACTIONS.map(a=>`
-    <button class="act-btn" data-act="${a.k}" onclick="tapAction('${a.k}')"><span class="at">0s</span><span class="adot" style="background:${a.c}"></span>${a.k}</button>`).join('');
-}
-function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-function phaseFor(t){return t<=15?'auto':t<=135?'teleop':'end';}
-function toggleMatch(){
-  if(!match.running){
-    match.running=true;match.start=Date.now();
-    document.getElementById('msMatchBtn').innerHTML='End Match';document.getElementById('msMatchBtn').className='btn';
-    match.timer=setInterval(tick,200);
-    logEv(0,'MATCH','Match started');
-  } else { endMatch(); }
-}
-function tick(){
-  match.t=Math.min(150,Math.floor((Date.now()-match.start)/1000));
-  document.getElementById('msTimer').textContent=fmt(match.t);
-  const ph=phaseFor(match.t);
-  const pe=document.getElementById('msPhase');
-  pe.textContent=ph==='auto'?'Autonomous':ph==='teleop'?'Teleop':'Endgame';
-  pe.className='phase-pill '+(ph==='end'?'end':ph);
-  if(match.active){
-    const live=match.totals[match.active]+(match.t-match.activeSince);
-    const btn=document.querySelector(`#actionGrid .act-btn[data-act="${match.active}"] .at`);
-    if(btn)btn.textContent=live+'s';
-  }
-  if(match.t>=150)endMatch();
-}
-function tapAction(k){
-  if(!match.running){toast('Press Start Match first');return;}
-  if(match.active===k){ // toggle off
-    match.totals[k]+=match.t-match.activeSince;
-    logEv(match.t,k,'stopped ('+(match.t-match.activeSince)+'s)');
-    document.querySelector(`#actionGrid .act-btn[data-act="${k}"]`).classList.remove('on');
-    match.active=null;match.activeSince=0;return;
-  }
-  if(match.active){ // switch
-    match.totals[match.active]+=match.t-match.activeSince;
-    document.querySelector(`#actionGrid .act-btn[data-act="${match.active}"]`).classList.remove('on');
-    document.querySelector(`#actionGrid .act-btn[data-act="${match.active}"] .at`).textContent=match.totals[match.active]+'s';
-  }
-  match.active=k;match.activeSince=match.t;
-  document.querySelector(`#actionGrid .act-btn[data-act="${k}"]`).classList.add('on');
-  logEv(match.t,k,'started');
-}
-function logEv(t,act,d){
-  match.log.push({t,act,d});
-  const el=document.getElementById('msLog');
-  if(el.querySelector('.m'))el.innerHTML='';
-  el.insertAdjacentHTML('afterbegin',`<div class="ev"><span class="t">${fmt(t)}</span><span class="d">${act}</span><span style="color:var(--muted2)">${d}</span></div>`);
-  renderBreakdown();
-}
-function renderBreakdown(){
-  const total=Object.values(match.totals).reduce((a,b)=>a+b,0)||1;
-  document.getElementById('msBreakdown').innerHTML=ACTIONS.map(a=>{
-    const v=match.totals[a.k];
-    return `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem"><span style="width:78px;font-size:.78rem;display:flex;align-items:center;gap:.4rem"><i style="width:8px;height:8px;border-radius:50%;background:${a.c};flex:0 0 8px"></i>${a.k}</span><div class="barmini" style="flex:1"><i style="width:${v/total*100}%;background:${a.c}"></i></div><span class="mono" style="font-size:.74rem;width:34px;text-align:right">${v}s</span></div>`;
-  }).join('');
-}
-function endMatch(){
-  clearInterval(match.timer);
-  if(match.active){match.totals[match.active]+=match.t-match.activeSince;match.active=null;}
-  match.running=false;
-  document.getElementById('msLive').classList.add('hidden');
-  const total=Object.values(match.totals).reduce((a,b)=>a+b,0)||1;
-  // estimated BPS from CV fusion (Scoring time → balls)
-  const estBalls=Math.round(match.totals.Scoring*(0.7+Math.random()*0.5));
-  const bps=(estBalls/Math.max(1,match.totals.Scoring)).toFixed(2);
-  const timeline=ACTIONS.map(a=>match.totals[a.k]>0?`<i style="width:${match.totals[a.k]/total*100}%;background:${a.c}" title="${a.k} ${match.totals[a.k]}s"></i>`:'').join('');
-  document.getElementById('msSummary').classList.remove('hidden');
-  document.getElementById('msSummary').innerHTML=`
-    <div class="card" style="margin-bottom:1.2rem">
-      <div class="page-head" style="margin-bottom:.5rem"><div><div class="section-label">Match complete</div><h1 style="font-size:1.4rem">Team ${msSel.team} · Qual ${msSel.match.split('-')[1]}</h1></div>
-      <span class="tag ${msSel.alliance==='red'?'red':'blue'}">${msSel.alliance} alliance</span></div>
-      <div class="stat-grid" style="margin-bottom:1rem">
-        <div class="stat"><div class="sv">${fmt(match.t)}</div><div class="sl">Tracked time</div></div>
-        <div class="stat"><div class="sv">${match.totals.Scoring}s</div><div class="sl">Time scoring</div></div>
-        <div class="stat"><div class="sv">~${estBalls}</div><div class="sl">Est. game pieces (CV-fused)</div></div>
-        <div class="stat"><div class="sv">${bps}</div><div class="sl">Implied BPS</div></div>
-      </div>
-      <label>Action timeline</label><div class="timeline">${timeline}</div>
-      <div style="margin-top:1rem">${ACTIONS.map(a=>`<span class="tag muted" style="margin:.15rem">${a.k} ${match.totals[a.k]}s</span>`).join('')}</div>
-      <div class="divider"></div>
-      <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-        <button class="btn green" onclick="submitMatch(this)">✓ Submit &amp; sync</button>
-        <button class="btn ghost" onclick="newMatch()">Scout another match</button>
-      </div>
-    </div>`;
-  window.scrollTo(0,0);
-}
-function abortMatch(){clearInterval(match.timer);newMatch();}
-function newMatch(){
-  document.getElementById('msLive').classList.add('hidden');
-  document.getElementById('msSummary').classList.add('hidden');
-  document.getElementById('msSetup').classList.remove('hidden');
-  renderMsRobots();
-}
-
-/* ░ CV ░ */
-let cvSpeed=3;
-document.getElementById('cvSpeed').addEventListener('click',e=>{
-  const b=e.target.closest('button');if(!b)return;
-  document.querySelectorAll('#cvSpeed button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-  cvSpeed=+b.dataset.sp;document.getElementById('cvSpeedLbl').textContent=cvSpeed+'× speed';
-});
-function runCV(){
-  const term=document.getElementById('cvTerm'),json=document.getElementById('cvJson'),bar=document.getElementById('cvBar'),clock=document.getElementById('cvClock');
-  term.innerHTML='';json.innerHTML='';
-  document.getElementById('cvRunBtn').disabled=true;
-  const lines=[
-    ['m','[init] loading match stream · '+document.getElementById('cvSrc').value],
-    ['b','[roi] scoreboard region locked → OCR engine warm'],
-    ['y','[run] processing at '+cvSpeed+'× speed…']
-  ];
-  let i=0;
-  const boot=setInterval(()=>{
-    if(i<lines.length){term.innerHTML+=`<div class="ln ${lines[i][0]}">${lines[i][1]}</div>`;term.scrollTop=term.scrollHeight;i++;return;}
-    clearInterval(boot);processCV();
-  },260);
-  function processCV(){
-    let sec=0,deltas=[],redTot=0,blueTot=0;
-    const dur=150;
-    json.innerHTML='<div class="ln m">[</div>';
-    const iv=setInterval(()=>{
-      sec+=1;
-      const pct=Math.round(sec/dur*100);
-      bar.style.width=pct+'%';clock.textContent=fmt(sec);
-      if(Math.random()<0.32){
-        const al=Math.random()<0.5?'red':'blue';
-        const pts=[2,3,4,5][Math.floor(Math.random()*4)];
-        if(al==='red')redTot+=pts;else blueTot+=pts;
-        deltas.push({t:sec,al,pts});
-        term.innerHTML+=`<div class="ln ${al==='red'?'r':'b'}">[${fmt(sec)}] Δ ${al.toUpperCase()} +${pts}  (R ${redTot} / B ${blueTot})</div>`;
-        json.insertAdjacentHTML('beforeend',`<div class="ln"><span class="m">  {</span>"t":<span class="y">${sec}</span>,"alliance":<span class="g">"${al}"</span>,"delta":<span class="y">${pts}</span><span class="m">},</span></div>`);
-        term.scrollTop=term.scrollHeight;json.scrollTop=json.scrollHeight;
-      }
-      if(sec>=dur){
-        clearInterval(iv);
-        term.innerHTML+=`<div class="ln g">[done] ${deltas.length} score deltas · final R ${redTot} - B ${blueTot}</div>`;
-        json.insertAdjacentHTML('beforeend','<div class="ln m">]</div>');
-        document.getElementById('cvRunBtn').disabled=false;
-        toast(`CV done - ${deltas.length} deltas logged at ${cvSpeed}×`);
-      }
-    },Math.max(18,90/cvSpeed));
-  }
-}
-
-/* ░ LEADERBOARD ░ — built live from registered scouts */
-function submitMatch(btn){
-  if(btn){if(btn.dataset.done)return;btn.dataset.done='1';btn.disabled=true;btn.textContent='✓ Submitted';}
-  bumpStat('matches',1);
-  toast('✓ Synced — flags merged with CV deltas, BPS recomputed');
-}
-function renderLeaderboard(){
-  BOARD=mergeBoards(BOARD,localPublic());  // always reflect this device's accounts
-  const me=USER?pubId(USER.email):null;
-  const scouts=Object.entries(BOARD)
-    .map(([id,v])=>({id,name:v.name||'Scout',matches:v.matches||0,pit:v.pit||0}))
-    .sort((a,b)=>b.matches-a.matches||b.pit-a.pit||a.name.localeCompare(b.name));
-  const totM=scouts.reduce((s,x)=>s+x.matches,0);
-  document.getElementById('lbMatches').textContent=totM;
-  document.getElementById('lbHours').textContent=(totM?Math.round(totM*0.18):0)+'h';
-  document.getElementById('lbScouts').textContent=scouts.length;
-  document.getElementById('lbTop').textContent=(scouts.length&&scouts[0].matches>0)?scouts[0].name.split(' ')[0]:'—';
-  const body=document.getElementById('lbBody');
-  if(!scouts.length){
-    body.innerHTML='<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:1.6rem .8rem">No scouts registered yet — new accounts appear here automatically.</td></tr>';
-    return;
-  }
-  const max=Math.max(1,scouts[0].matches);
-  body.innerHTML=scouts.map((s,i)=>`
-    <tr><td class="rank ${i<3&&s.matches>0?'r'+(i+1):''}">${i+1}</td>
-    <td><div style="display:flex;align-items:center;gap:.6rem"><div class="avatar" style="width:28px;height:28px;flex-basis:28px;font-size:.72rem">${s.name[0].toUpperCase()}</div><b>${s.name}</b>${me&&s.id===me?' <span class="tag red">you</span>':''}</div></td>
-    <td class="mono">${s.matches}</td><td class="mono">${(s.matches*0.18).toFixed(1)}h</td><td class="mono">${s.pit}</td>
-    <td style="width:140px"><div class="barmini"><i style="width:${s.matches/max*100}%"></i></div></td></tr>`).join('');
-}
-
-/* ░ TOAST ░ */
-let toastT;
-function toast(msg){
-  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3400);
-}
-
-/* ░ BOOT ░ */
-resumeSession(); // auto-login if a session exists; otherwise show the login screen
-</script>
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>
