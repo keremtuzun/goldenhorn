@@ -394,12 +394,29 @@ function bindChrome() {
 /* State changes repaint whatever page is open, except a match in progress,
    which owns its own DOM until the scout is finished with it. */
 events.on('change', () => {});
-['teams', 'data', 'records', 'pits', 'board', 'queue', 'picks', 'draft'].forEach(evt => {
+/* Which pages actually care about which change. A board sync landing every 45
+   seconds has no business repainting the pit form, and used to. null means
+   every page is interested. */
+const REPAINT_ON = {
+  teams  : null,
+  data   : null,
+  records: null,
+  pits   : null,
+  board  : ['leaderboard', 'data'],
+  queue  : ['data'],
+  picks  : ['picklist', 'draft'],
+  draft  : ['draft'],
+};
+
+Object.entries(REPAINT_ON).forEach(([evt, pages]) => {
   events.on(evt, () => {
     if (!appStarted) return;
     paintNetPill();
     if (evt === 'teams') buildCommands();
-    if (current === 'match' && Collect.matchIsLive()) return;
+    if (pages && !pages.includes(current)) return;
+    // Never throw away work in progress. A scout typing match notes or a pit
+    // report keeps their screen until they are finished with it.
+    if (Collect.pageHoldsInput(current)) return;
     PAGES[current]?.render(pageRoot(current));
   });
 });

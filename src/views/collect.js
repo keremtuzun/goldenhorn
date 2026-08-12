@@ -112,6 +112,10 @@ const blankPit = () => ({
 
 let pit = blankPit();
 
+/* True once a scout has typed or tapped anything not yet saved. A background
+   sync must never repaint the page out from under them while this is set. */
+let pitDirty = false;
+
 const pillGroup = (id, key, values) => `<div class="pills" data-pills="${id}" data-key="${key}">
   ${values.map(v => `<button type="button" data-v="${esc(v)}" class="${pit[key] === v ? 'on' : ''}">${esc(v)}</button>`).join('')}
 </div>`;
@@ -320,8 +324,15 @@ async function shrinkPhoto(file, maxEdge = 720) {
 }
 
 export function bindPit(root, rerender) {
+  // Any keystroke or field change marks the form dirty.
+  root.addEventListener('input', () => { pitDirty = true; });
+
   root.addEventListener('click', async e => {
     const t = e.target;
+    // Any control tap that mutates the report also counts as dirty.
+    if (t.closest('[data-pills] button, [data-yn] button, [data-quality] button, .fieldmap, #unitSeg button')) {
+      pitDirty = true;
+    }
 
     const pillBtn = t.closest('[data-pills] button');
     if (pillBtn) {
@@ -391,7 +402,7 @@ export function bindPit(root, rerender) {
         title: 'Clear the form?', body: 'Everything typed in but not saved goes away.',
         confirmLabel: 'Clear it',
       });
-      if (keep) { pit = blankPit(); rerender(); }
+      if (keep) { pit = blankPit(); pitDirty = false; rerender(); }
       return;
     }
 
@@ -409,6 +420,7 @@ export function bindPit(root, rerender) {
         : `Pit report saved for team ${pit.team}.`,
         saved.droppedPhotos ? 'warn' : 'pos', saved.droppedPhotos ? 6000 : 3600);
       pit = blankPit();
+      pitDirty = false;
       rerender();
       return;
     }
@@ -416,7 +428,7 @@ export function bindPit(root, rerender) {
     const edit = t.closest('[data-edit]')?.dataset.edit;
     if (edit) {
       const rec = state.pits.find(p => p.id === edit);
-      if (rec) { pit = { ...blankPit(), ...rec }; rerender(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      if (rec) { pit = { ...blankPit(), ...rec }; pitDirty = false; rerender(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
       return;
     }
 
@@ -937,4 +949,15 @@ export function matchHotkeys(root, e) {
 }
 
 export function stopMatchTimer() { clearInterval(ringTimer); }
+
+/** Clock actually ticking. Used for the leave-the-page warning. */
 export const matchIsLive = () => Boolean(live?.running);
+
+/** Anything a scout would lose if this page were repainted underneath them:
+ *  a match session in any state, including the summary screen where the
+ *  qualitative notes get typed, or a part-filled pit form. */
+export function pageHoldsInput(page) {
+  if (page === 'match') return live !== null;
+  if (page === 'pit') return pitDirty;
+  return false;
+}
