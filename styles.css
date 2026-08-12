@@ -357,6 +357,17 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radiu
 #app{display:none;min-height:100vh}
 #app.show{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr)}
 
+/* The scrim lives inside #app so it can sit above the sidebar, which means it
+   would otherwise be the grid's first item and push the sidebar into the
+   content column. Fixed positioning takes it out of flow, so the grid sees
+   exactly two children. This must stay outside the mobile media query: without
+   it the desktop layout swaps its columns. */
+.scrim{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:55;
+  opacity:0;pointer-events:none;transition:opacity var(--d2) linear;
+}
+.scrim.on{opacity:1;pointer-events:auto}
+
 .sidebar{
   position:sticky;top:0;height:100vh;background:var(--n-0);
   border-right:1px solid var(--line);
@@ -443,9 +454,6 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border:0;border-radiu
     transform:translateX(-100%);transition:transform var(--d3) var(--e-out);
     box-shadow:var(--sh-4)}
   .sidebar.open{transform:none}
-  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:55;
-    opacity:0;pointer-events:none;transition:opacity var(--d2) linear}
-  .scrim.on{opacity:1;pointer-events:auto}
   .mobile-bar{display:flex}
   .main{padding:var(--s4) var(--s4) var(--s11)}
   .topbar{padding:0 var(--s4)}
