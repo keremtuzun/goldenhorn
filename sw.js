@@ -7,16 +7,17 @@
 /* Bump this on every deploy that changes the shell. The install event only runs
    when these bytes change, so without a bump returning visitors keep the old
    precache. */
-const VERSION = 'gh-v5-2026-08-13';
+const VERSION = 'gh-v6-2026-08-13';
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = `runtime-${VERSION}`;
 
 const SHELL_FILES = [
   '/', '/index.html', '/styles.css', '/logo.png', '/manifest.webmanifest',
   '/src/main.js', '/src/util.js', '/src/icons.js', '/src/store.js', '/src/api.js',
-  '/src/charts.js', '/src/solver.js', '/src/qr.js', '/src/ui.js', '/src/db.js',
+  '/src/charts.js', '/src/solver.js', '/src/ui.js', '/src/db.js',
   '/src/views/parts.js', '/src/views/overview.js', '/src/views/strategy.js',
-  '/src/views/event.js', '/src/views/collect.js', '/src/views/pipeline.js',
+  '/src/views/event.js', '/src/views/collect.js', '/src/views/matchdata.js',
+  '/src/views/pipeline.js',
   '/src/views/team.js',
 ];
 

@@ -13,6 +13,7 @@ import * as Overview from './views/overview.js';
 import * as Strategy from './views/strategy.js';
 import * as Event from './views/event.js';
 import * as Collect from './views/collect.js';
+import * as MatchData from './views/matchdata.js';
 import * as Pipeline from './views/pipeline.js';
 import * as Team from './views/team.js';
 
@@ -30,7 +31,7 @@ const PAGES = {
   assignments: { label: 'Scout Assignments',icon: 'table',      render: Event.renderAssignments },
   prescout:    { label: 'Pre-Scout',        icon: 'layers',     render: Collect.renderPrescout },
   pit:         { label: 'Pit Scout',        icon: 'robot',      render: Collect.renderPit },
-  match:       { label: 'Match Scout',      icon: 'stopwatch',  render: Collect.renderMatch },
+  match:       { label: 'Match Data',       icon: 'calendar',   render: MatchData.renderMatchData },
   cv:          { label: 'CV Scoreboard',    icon: 'camera',     render: Pipeline.renderCV },
   bps:         { label: 'The BPS Model',    icon: 'sigma',      render: Pipeline.renderBPS },
   leaderboard: { label: 'Scout Leaderboard',icon: 'trophy',     render: Team.renderLeaderboard },
@@ -119,13 +120,18 @@ function bindPages() {
   Event.bindSchedule(pageRoot('schedule'), {
     rerender: rerender('schedule'),
     positionSegThumb: Overview.positionSegThumb,
-    onScout: () => go('match'),
     onPredict: m => { if (m) { Strategy.setPredictorMatch(m); go('predictor'); } },
   });
   Event.bindAssignments(pageRoot('assignments'), rerender('assignments'));
 
   Collect.bindPit(pageRoot('pit'), rerender('pit'));
-  Collect.bindMatch(pageRoot('match'), rerender('match'));
+  MatchData.bindMatchData(pageRoot('match'), {
+    rerender: rerender('match'),
+    onPredict: key => {
+      const m = state.matches.find(x => x.key === key);
+      if (m) { Strategy.setPredictorMatch(m); go('predictor'); }
+    },
+  });
 
   Pipeline.bindCV(pageRoot('cv'));
   Pipeline.bindBPS(pageRoot('bps'));
@@ -404,12 +410,7 @@ function bindChrome() {
   window.addEventListener('resize', debounce(() => { moveSeam(); moveAuthThumb(); }, 120));
 
   document.addEventListener('keydown', e => {
-    if (Collect.matchHotkeys(pageRoot('match'), e)) return;
     if (e.key === 'Escape') closeAll();
-  });
-
-  window.addEventListener('beforeunload', e => {
-    if (Collect.matchIsLive()) { e.preventDefault(); e.returnValue = ''; }
   });
 }
 

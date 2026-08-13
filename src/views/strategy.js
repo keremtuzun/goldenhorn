@@ -155,7 +155,7 @@ const LANES = [
 
 const WEIGHT_LABELS = {
   opr: 'Contribution', auto: 'Autonomous', teleop: 'Teleop rate',
-  defense: 'Defence', consistency: 'Consistency', pit: 'Pit report on file',
+  defense: 'Defence', consistency: 'Climb rate', pit: 'Pit report on file',
 };
 
 export function seedPickList({ force = false } = {}) {

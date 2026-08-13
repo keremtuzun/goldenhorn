@@ -67,16 +67,19 @@ function pick(obj, paths) {
 
 /* ---------------- derived metrics ---------------- */
 
-/** Consistency: how repeatable a robot's scouted output is, 0 to 100. Needs at
- *  least two of our own scouted matches, otherwise it stays null and the UI
- *  shows a dash rather than a made-up number. */
+/** Endgame reliability: how often this robot actually got up the tower, as a
+ *  percentage of its played matches.
+ *
+ *  This is one of the few genuinely per-robot facts the feed publishes, in
+ *  endGameTowerRobot1/2/3. Alliance points cannot be split between three robots
+ *  without a solver, so we do not pretend to: everything else on a team row is
+ *  either a measured contribution metric like OPR or is labelled alliance
+ *  level. Needs two matches before it means anything. */
 function consistencyFor(team) {
   const recs = recordsFor(team);
   if (recs.length < 2) return null;
-  const vals = recs.map(r => (r.totals?.Scoring ?? 0));
-  const m = mean(vals);
-  if (m <= 0) return null;
-  return Math.round(clamp(100 - (stdev(vals) / m) * 100, 0, 100));
+  const climbs = recs.filter(r => r.climbed).length;
+  return Math.round(clamp((climbs / recs.length) * 100, 0, 100));
 }
 
 const norm = (v, lo, hi) => (v == null || hi === lo ? 0 : clamp((v - lo) / (hi - lo), 0, 1));
@@ -314,6 +317,81 @@ export async function loadLive() {
   };
   emit('teams');
   return true;
+}
+
+/* ---------------- match data from the feed ---------------- */
+
+/* The 2026 breakdown publishes three useful shapes:
+     per robot   endGameTowerRobot1..3, autoTowerRobot1..3
+     per phase   hubScore, split into auto, transition, four shifts and endgame
+     per alliance totalAutoPoints, totalTeleopPoints, rp, fouls
+   Only the first is attributable to a single robot. The rest is alliance level
+   and is labelled that way everywhere it is shown. */
+const PHASES = [
+  ['auto', 'autoCount'], ['transition', 'transitionCount'],
+  ['shift1', 'shift1Count'], ['shift2', 'shift2Count'],
+  ['shift3', 'shift3Count'], ['shift4', 'shift4Count'],
+  ['endgame', 'endgameCount'],
+];
+
+function recordsFromMatch(m) {
+  const out = [];
+  if (!m.score_breakdown) return out;
+  const at = new Date((m.actual_time || m.time || 0) * 1000).toISOString();
+
+  for (const side of ['red', 'blue']) {
+    const sb = m.score_breakdown[side];
+    const other = side === 'red' ? 'blue' : 'red';
+    if (!sb) continue;
+    const hub = sb.hubScore || {};
+    const teams = m.alliances[side].team_keys.map(k => +k.replace('frc', ''));
+
+    teams.forEach((team, i) => {
+      const tower = sb[`endGameTowerRobot${i + 1}`];
+      const autoTower = sb[`autoTowerRobot${i + 1}`];
+      out.push({
+        id: `${m.key}_${team}`,          // stable, so re-importing updates rather than duplicates
+        at, by: 'The Blue Alliance', source: 'tba',
+        team, match: `Q${m.match_number}`, matchKey: m.key, station: i + 1,
+        alliance: side,
+        allianceScore: m.alliances[side].score,
+        opponentScore: m.alliances[other].score,
+        won: m.winning_alliance === side,
+        tied: !m.winning_alliance,
+        rp: sb.rp ?? null,
+        autoPoints: sb.totalAutoPoints ?? null,
+        teleopPoints: sb.totalTeleopPoints ?? null,
+        endgamePoints: hub.endgamePoints ?? null,
+        hubTotal: hub.totalPoints ?? null,
+        phases: Object.fromEntries(PHASES.map(([name, key]) => [name, hub[key] ?? 0])),
+        tower: tower && tower !== 'None' ? tower : null,
+        climbed: Boolean(tower && tower !== 'None'),
+        autoTower: autoTower && autoTower !== 'None' ? autoTower : null,
+        majorFouls: sb.majorFoulCount ?? 0,
+        minorFouls: sb.minorFoulCount ?? 0,
+      });
+    });
+  }
+  return out;
+}
+
+/** Pulls every played qualification match with its full score breakdown and
+ *  turns it into one row per robot per match. */
+export async function importMatchData() {
+  const key = tbaKey();
+  if (!key) throw new Error('A Blue Alliance key is needed to read score breakdowns.');
+  const ev = state.settings.event;
+
+  const all = await fetchJSON(
+    `https://www.thebluealliance.com/api/v3/event/${ev}/matches`,
+    { 'X-TBA-Auth-Key': key }, 20000);
+
+  const played = all
+    .filter(m => m.comp_level === 'qm' && m.score_breakdown && m.alliances.red.score >= 0)
+    .sort((a, b) => a.match_number - b.match_number);
+
+  const records = played.flatMap(recordsFromMatch);
+  return { matches: played, records, skipped: all.length - played.length };
 }
 
 /* ---------------- prediction ---------------- */

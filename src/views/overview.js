@@ -55,7 +55,7 @@ function nextMatchCard() {
       </div>
     </div>
     <button class="btn full" style="margin-top:var(--s4)" data-go="match">
-      ${icon('stopwatch')}Scout this match
+      ${icon('target')}Open in the predictor
     </button>
   </div>`;
 }
@@ -96,15 +96,15 @@ export function renderHome(root) {
       title: `Welcome back, ${state.user?.name?.split(' ')[0] || 'scout'}`,
       lede: 'Team 8159 Golden Horn, Jr. Robotics Science School, Ataşehir. Rookie 2020, Galileo Division at the 2026 Houston World Championship.',
       actions: `<button class="btn ghost" data-go="picklist">${icon('picklist')}Pick list</button>
-                <button class="btn" data-go="match">${icon('stopwatch')}Start scouting</button>`,
+                <button class="btn" data-go="match">${icon('download')}Import matches</button>`,
     })}
     ${dataStrip()}
     <div class="stats" style="margin-bottom:var(--s4)">
       ${statTile({ label: 'Teams in the field', value: state.teams.length, icon: 'users',
-        sub: `<span class="tag">${covered} scouted by us</span>` })}
-      ${statTile({ label: 'Matches you have logged', value: scouted, icon: 'stopwatch',
-        sub: pending ? `<span class="tag warn">${pending} waiting to sync</span>`
-                     : '<span class="tag pos">all synced</span>' })}
+        sub: `<span class="tag">${covered} with match data</span>` })}
+      ${statTile({ label: 'Match rows imported', value: scouted, icon: 'calendar',
+        sub: scouted ? '<span class="tag pos">from the feed</span>'
+                     : '<span class="tag warn">not imported yet</span>' })}
       ${statTile({ label: 'Pit reports on file', value: pits, icon: 'robot',
         sub: `<span class="tag">${state.teams.length - pits} still to visit</span>` })}
       ${statTile({
@@ -130,12 +130,13 @@ export function renderHome(root) {
             <p>Every prior match of every team in the division, captured at alliance level before quals start.</p></div></div>
           <div class="step"><span class="s-n">2</span><div><b>Pit Scout</b>
             <p>Specs, drivetrain, vision, scoring, autos and shop habits. Near total awareness of every robot.</p></div></div>
-          <div class="step"><span class="s-n">3</span><div><b>Match Scout</b>
-            <p>Seven time-tracked action segments fused with the CV scoreboard reader.</p></div></div>
+          <div class="step"><span class="s-n">3</span><div><b>Match Data</b>
+            <p>Every played match off the feed, with the endgame result it publishes for each robot.</p></div></div>
         </div>
         <hr class="rule" />
-        <p class="prose">Scouts do not count game pieces. The vision pipeline counts, the scouts flag
-        <b>who</b> and <b>when</b>, and a bounded ridge solve turns the two into an honest per-team rate.</p>
+        <p class="prose">Scouts do not count game pieces and no longer run a stopwatch either. The feed
+        reports the match, the pit is where a person still adds something no camera can, and a bounded
+        ridge solve turns contribution into an honest per-team rate.</p>
       </div>
 
       <div class="card c5">
@@ -190,8 +191,8 @@ const COLUMNS = [
   { key: 'ccwm', label: 'CCWM', n: true, cell: t => `<td class="n">${num(t.ccwm, 1)}</td>` },
   { key: 'dpr', label: 'DPR', n: true, cell: t => `<td class="n">${num(t.dpr, 1)}</td>` },
   { key: 'winPct', label: 'Win %', n: true, cell: t => `<td class="n">${t.winPct != null ? t.winPct + '%' : '–'}</td>` },
-  { key: 'consistency', label: 'Consist.', n: true, cell: t => `<td class="n">${t.consistency != null ? t.consistency : '–'}</td>` },
-  { key: 'scouted', label: 'Scouted', n: true, cell: t => `<td class="n">${t.scouted || '–'}</td>` },
+  { key: 'consistency', label: 'Climb %', n: true, cell: t => `<td class="n">${t.consistency != null ? t.consistency : '–'}</td>` },
+  { key: 'scouted', label: 'Matches', n: true, cell: t => `<td class="n">${t.scouted || '–'}</td>` },
   { key: 'score', label: 'Pick score', n: true, cell: t => `<td class="n">${num(t.score, 1)}</td>` },
   { key: 'record', label: 'Record', cell: t => `<td class="mono">${t.record || '–'}</td>` },
 ];
@@ -333,7 +334,7 @@ export function positionSegThumb(seg) {
 
 /* ─────────────────────────── team drawer ─────────────────────────── */
 
-const AXES = ['Score', 'Auto', 'Teleop', 'Defence', 'Consist.', 'Record'];
+const AXES = ['Score', 'Auto', 'Teleop', 'Defence', 'Climb', 'Record'];
 
 function axisValues(t) {
   const f = key => state.teams.map(x => x[key]).filter(v => v != null);
@@ -356,7 +357,7 @@ export function openTeam(teamNum, { onPick, onCompare, onScout } = {}) {
   const recs = recordsFor(t.team);
   const fieldAvg = AXES.map((_, i) => mean(state.teams.map(x => axisValues(x)[i])));
 
-  const scoringHistory = recs.map(r => r.totals?.Scoring ?? 0).reverse();
+  const scoreHistory = recs.map(r => r.allianceScore ?? 0).reverse();
 
   openDrawer(`
     <div class="drawer-head">
@@ -391,25 +392,27 @@ export function openTeam(teamNum, { onPick, onCompare, onScout } = {}) {
       </div>
 
       <div class="card">
-        <div class="card-head"><div class="h-sec">What our scouts saw</div>
+        <div class="card-head"><div><div class="h-sec">Match by match</div>
+          <div class="card-note">From the feed. The climb column is per robot, the score is the whole alliance.</div></div>
           <span class="tag">${recs.length} match${recs.length === 1 ? '' : 'es'}</span></div>
         ${recs.length ? `
-          ${scoringHistory.length > 1 ? `<div style="margin-bottom:var(--s3)">
-            <div class="s-lbl">Seconds spent scoring, oldest to newest</div>
-            ${sparkline(scoringHistory, { w: 300, h: 46 })}</div>` : ''}
+          ${scoreHistory.length > 1 ? `<div style="margin-bottom:var(--s3)">
+            <div class="s-lbl">Alliance score in their matches, oldest to newest</div>
+            ${sparkline(scoreHistory, { w: 300, h: 46 })}</div>` : ''}
           <div class="tbl-wrap"><table>
-            <thead><tr><th>Match</th><th class="n">Scoring</th><th class="n">Defence</th><th class="n">Driver</th><th>By</th></tr></thead>
-            <tbody>${recs.slice(0, 8).map(r => `<tr>
+            <thead><tr><th>Match</th><th></th><th class="n">Score</th><th class="n">Auto</th><th class="n">Climb</th></tr></thead>
+            <tbody>${recs.slice(0, 10).map(r => `<tr>
               <td class="mono">${esc(r.match)}</td>
-              <td class="n">${r.totals?.Scoring ?? 0}s</td>
-              <td class="n">${r.defense != null ? r.defense + '/5' : '–'}</td>
-              <td class="n">${r.driver != null ? r.driver + '/5' : '–'}</td>
-              <td class="dim">${esc(r.by)}</td></tr>`).join('')}</tbody>
+              <td><span class="tag ${r.alliance}-al">${esc(r.alliance)}</span></td>
+              <td class="n">${r.allianceScore ?? '–'} <span class="dimmer">v ${r.opponentScore ?? '–'}</span></td>
+              <td class="n">${r.autoPoints ?? '–'}</td>
+              <td class="n">${r.climbed ? `<span class="tag pos">${esc(r.tower)}</span>` : '<span class="dimmer">no</span>'}</td>
+              </tr>`).join('')}</tbody>
           </table></div>`
         : emptyState({
-            icon: 'stopwatch', title: 'We have not scouted this robot yet',
-            body: 'Match scout it once and consistency, time on task and driver notes start filling in here.',
-            action: `<button class="btn sm" data-act="scout">${icon('stopwatch')}Scout them next</button>`,
+            icon: 'download', title: 'No match data for this robot',
+            body: 'Import the event on the Match Data page and every played match shows up here.',
+            action: `<button class="btn sm" data-act="scout">${icon('download')}Import match data</button>`,
           })}
       </div>
 
@@ -509,8 +512,8 @@ export function renderCompare(root) {
               ['DPR', t => num(t.dpr, 1)], ['CCWM', t => num(t.ccwm, 1)],
               ['Auto rate', t => num(t.autoBps, 2)], ['Teleop rate', t => num(t.teleopBps, 2)],
               ['Win rate', t => t.winPct != null ? t.winPct + '%' : '–'],
-              ['Consistency', t => t.consistency != null ? t.consistency : '–'],
-              ['Matches we scouted', t => t.scouted || '–'],
+              ['Climb rate', t => t.consistency != null ? t.consistency + '%' : '–'],
+              ['Matches on file', t => t.scouted || '–'],
               ['Pit report', t => t.hasPit ? 'yes' : 'no'],
               ['Pick score', t => num(t.score, 1)],
             ].map(([label, fn]) => `<tr><td>${label}</td>${rows.map(t =>

@@ -2,11 +2,10 @@
 
 import { $, esc, num, fmtRel, downloadFile, toCSV, copyText } from '../util.js';
 import { icon } from '../icons.js';
-import { state, persist, pubId, syncBoard, flushQueue, saveMatchRecord } from '../store.js';
+import { state, persist, pubId, syncBoard, flushQueue } from '../store.js';
 import { dbConfigured, signedIn, dbUser, dbHealthcheck } from '../db.js';
-import { unpackRecord } from '../qr.js';
 import { loadLive, loadSample, refreshDerived } from '../api.js';
-import { hydrate, toast, openModal, closeModal, confirmAction } from '../ui.js';
+import { hydrate, toast, confirmAction } from '../ui.js';
 import { pageHead, statTile, emptyState } from './parts.js';
 
 /* ─────────────────────────── leaderboard ─────────────────────────── */
@@ -15,23 +14,24 @@ export function renderLeaderboard(root) {
   const me = state.user ? pubId(state.user.email) : null;
   const scouts = Object.entries(state.board.scouts || {})
     .map(([id, v]) => ({ id, name: v.name || 'Scout', matches: v.matches || 0, pit: v.pit || 0 }))
-    .sort((a, b) => b.matches - a.matches || b.pit - a.pit || a.name.localeCompare(b.name));
+    .sort((a, b) => b.pit - a.pit || b.matches - a.matches || a.name.localeCompare(b.name));
 
   const totalMatches = scouts.reduce((s, x) => s + x.matches, 0);
   const totalPits = scouts.reduce((s, x) => s + x.pit, 0);
-  const max = Math.max(1, scouts[0]?.matches || 1);
+  const max = Math.max(1, scouts[0]?.pit || 1);
 
   root.innerHTML = `
     ${pageHead({
       eyebrow: 'Recognising the grind', title: 'Scout Leaderboard',
-      lede: 'None of this works without the people watching robots for eight hours. Everyone who signs up appears here, and the board moves as matches and pit reports land.',
+      lede: 'Match results come off the feed on their own. Pit reports do not, so this board counts the work that still needs a person walking the pits.',
       actions: `<button class="btn ghost" data-act="sync">${icon('refresh')}Sync now</button>`,
     })}
     <div class="stats" style="margin-bottom:var(--s4)">
-      ${statTile({ label: 'Matches scouted', value: totalMatches, icon: 'stopwatch' })}
-      ${statTile({ label: 'Scout hours', value: totalMatches * 0.18, decimals: 1, suffix: 'h', icon: 'clock',
-        sub: '<span class="dim">about eleven minutes a match</span>' })}
-      ${statTile({ label: 'Pit reports', value: totalPits, icon: 'robot' })}
+      ${statTile({ label: 'Pit reports filed', value: totalPits, icon: 'robot' })}
+      ${statTile({ label: 'Robots visited', value: state.pits.length, icon: 'eye',
+        sub: `<span class="dim">of ${state.teams.length} in the field</span>` })}
+      ${statTile({ label: 'Match rows on file', value: state.records.length, icon: 'calendar',
+        sub: '<span class="dim">imported, not hand logged</span>' })}
       ${statTile({ label: 'Active scouts', value: scouts.length, icon: 'users' })}
     </div>
 
@@ -49,17 +49,15 @@ export function renderLeaderboard(root) {
           ? `Shared across every device on the team. Last synced ${esc(fmtRel(state.boardSynced))}.`
           : 'Local to this device until a shared board is connected.'}</div></div></div>
       ${scouts.length ? `<div class="tbl-wrap"><table>
-        <thead><tr><th>#</th><th>Scout</th><th class="n">Matches</th><th class="n">Hours</th><th class="n">Pit reports</th><th>Share of the work</th></tr></thead>
+        <thead><tr><th>#</th><th>Scout</th><th class="n">Pit reports</th><th>Share of the pits</th></tr></thead>
         <tbody>${scouts.map((s, i) => `<tr class="${me && s.id === me ? 'me' : ''}">
-          <td class="rk ${i < 3 && s.matches > 0 ? 'r' + (i + 1) : ''}">${i + 1}</td>
+          <td class="rk ${i < 3 && s.pit > 0 ? 'r' + (i + 1) : ''}">${i + 1}</td>
           <td><div class="row" style="gap:var(--s3)">
             <div class="avatar sm${me && s.id === me ? ' me' : ''}">${esc(s.name[0].toUpperCase())}</div>
             <b>${esc(s.name)}</b>${me && s.id === me ? '<span class="tag gold">you</span>' : ''}
           </div></td>
-          <td class="n">${s.matches}</td>
-          <td class="n">${num(s.matches * 0.18, 1)}h</td>
           <td class="n">${s.pit}</td>
-          <td style="width:9rem"><div class="meter"><i data-w="${(s.matches / max) * 100}%"></i></div></td>
+          <td style="width:9rem"><div class="meter"><i data-w="${(s.pit / max) * 100}%"></i></div></td>
         </tr>`).join('')}</tbody>
       </table></div>`
       : emptyState({
@@ -100,12 +98,11 @@ function boardTag() {
 
 export function renderData(root) {
   const d = state.data;
-  const canScan = 'BarcodeDetector' in window;
-
+  
   root.innerHTML = `
     ${pageHead({
       eyebrow: 'Plumbing', title: 'Data and Sync',
-      lede: 'Where the numbers come from, what is waiting to go out, and how to move a scouted match between devices when there is no network at all.',
+      lede: 'Where the numbers come from, what is waiting to go out, and how to back the whole thing up.',
     })}
 
     <div class="g12">
@@ -135,7 +132,7 @@ export function renderData(root) {
 
       <div class="card c6">
         <div class="card-head"><div><div class="h-sec">${icon('database')}Database</div>
-          <div class="card-note">Real accounts and a real table for every match, pit report and pick list.</div></div>
+          <div class="card-note">Real accounts, and a real table behind every pit report and the pick list.</div></div>
           ${dbConfigured()
             ? (signedIn() ? '<span class="tag pos"><span class="pulse"></span>connected</span>'
                           : '<span class="tag warn">not signed in</span>')
@@ -206,21 +203,6 @@ export function renderData(root) {
         <p class="card-note" style="margin-top:var(--s3)">The board is a public JSON document. Display names and
         tallies go on it, never emails, passwords or photos. Anyone with the URL can read and overwrite it, so
         treat it as a shared scratchpad and keep JSON backups.</p>
-      </div>
-
-      <div class="card c6">
-        <div class="card-head"><div><div class="h-sec">${icon('qr')}Move a match without a network</div>
-          <div class="card-note">The scouting tablet shows a code. This device reads it.</div></div></div>
-        ${canScan
-          ? `<button class="btn full" data-act="scan">${icon('scan')}Scan a code with the camera</button>
-             <div class="rule tight"></div>`
-          : `<div class="notice" style="margin-bottom:var(--s4)">${icon('info')}<div>
-              <b>No camera decoder in this browser</b>
-              <p>Chrome on Android can scan directly. Everywhere else, type or paste the code text below.</p>
-            </div></div>`}
-        <div class="field"><label for="qrIn">Or paste the code text</label>
-          <textarea id="qrIn" rows="3" placeholder="GH1|9026|Q12|r|Elif K.|150|S38.I22…"></textarea></div>
-        <button class="btn ghost full" data-act="import-code">${icon('upload')}Import this record</button>
       </div>
 
       <div class="card c6">
@@ -334,15 +316,6 @@ export function bindData(root, rerender) {
       return;
     }
 
-    if (act === 'import-code') {
-      const text = $('#qrIn', root).value.trim();
-      if (!text) { toast('Paste a code first.', 'warn'); return; }
-      importCode(text, rerender);
-      return;
-    }
-
-    if (act === 'scan') { scanWithCamera(rerender); return; }
-
     if (act === 'ex-all') {
       downloadFile(`goldenhorn-${state.settings.event}.json`, exportEverything(), 'application/json');
       toast('Full backup exported.', 'pos');
@@ -406,62 +379,7 @@ export function bindData(root, rerender) {
   });
 }
 
-function importCode(text, rerender) {
-  try {
-    const rec = unpackRecord(text);
-    saveMatchRecord(rec);
-    refreshDerived();
-    rerender();
-    toast(`Imported team ${rec.team} from ${rec.match}.`, 'pos');
-  } catch (err) {
-    toast(`Not a valid code: ${err.message}`, 'neg');
-  }
-}
 
-/** Camera scan where the browser can do it natively. No decoder shipped, so
- *  this is a genuine capability check rather than a broken button. */
-async function scanWithCamera(rerender) {
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-  } catch {
-    toast('Camera permission was refused, so paste the code text instead.', 'warn');
-    return;
-  }
-  const video = Object.assign(document.createElement('video'), { autoplay: true, playsInline: true, muted: true });
-  video.srcObject = stream;
-  video.style.cssText = 'width:100%;border-radius:var(--r-sm)';
-
-  const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-  let stop = false;
-  const shutDown = () => { stop = true; stream.getTracks().forEach(t => t.stop()); };
-
-  openModal(`<h3 class="h-sec">${icon('scan')}Point at the code</h3>
-    <div id="camHost" style="margin:var(--s4) 0"></div>
-    <div class="row end"><button class="btn ghost" data-close>Cancel</button></div>`, {
-    onMount(panel) {
-      $('#camHost', panel).appendChild(video);
-      panel.addEventListener('click', ev => {
-        if (ev.target.closest('[data-close]')) { shutDown(); closeModal(); }
-      });
-    },
-  });
-
-  const loop = async () => {
-    if (stop) return;
-    try {
-      const found = await detector.detect(video);
-      if (found.length) {
-        shutDown();
-        closeModal();
-        importCode(found[0].rawValue, rerender);
-        return;
-      }
-    } catch { /* frame not ready */ }
-    requestAnimationFrame(loop);
-  };
-  requestAnimationFrame(loop);
-}
 
 /* ─────────────────────────── roadmap ─────────────────────────── */
 

@@ -212,15 +212,18 @@ export function savePicks() {
 }
 
 /* ---------------- scouting records ---------------- */
-export function saveMatchRecord(rec) {
-  const full = { id: uid(), at: new Date().toISOString(), by: state.user?.name || 'Unknown', ...rec };
-  state.records.unshift(full);
-  state.records = state.records.slice(0, 500);
+/** Replaces the feed-derived match rows with a fresh import.
+ *
+ *  These are not pushed to the database on purpose. They are public, objective
+ *  and reproducible from the event key alone, so syncing them between devices
+ *  would only duplicate The Blue Alliance into a free tier that is better spent
+ *  on the things a human actually produced: pit reports and the pick list. */
+export function importRecords(records) {
+  const mine = state.records.filter(r => r.source !== 'tba');
+  state.records = [...records, ...mine];
   persist('records');
-  credit('matches', 1);
-  enqueue('match', full);
   emit('records');
-  return full;
+  return state.records.length;
 }
 
 export function savePitReport(rep) {
